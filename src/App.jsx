@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, RadarChart, Radar, 
-  PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, 
+import {
+  LineChart, Line, AreaChart, Area, BarChart, Bar, RadarChart, Radar,
+  PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend, Sankey, Layer
 } from 'recharts';
-import { 
-  Shield, AlertTriangle, Activity, Zap, Lock, Eye, Server, 
-  TrendingUp, TrendingDown, CheckCircle, XCircle, Clock, 
+import {
+  Shield, AlertTriangle, Activity, Zap, Lock, Eye, Server,
+  TrendingUp, TrendingDown, CheckCircle, XCircle, Clock,
   Database, Cloud, Cpu, Network, FileWarning, ShieldCheck,
   BarChart3, PieChart as PieIcon, Layers, Target, AlertCircle,
   MessageSquare, Send, Bot, X, Download, ChevronRight, ChevronDown,
   GitBranch, Box, Workflow, FileText, Settings, Info, ExternalLink,
   Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen
 } from 'lucide-react';
+import WhitepaperTab from './WhitepaperTab';
 
 // ============================================================================
 // DATA MODELS
@@ -629,7 +630,8 @@ export default function ARPRIDashboard() {
     { id: 'threats', label: 'Threat Intel', icon: AlertTriangle },
     { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
     { id: 'models', label: 'AI Models', icon: Cpu },
-    { id: 'architecture', label: 'Architecture', icon: Layers }
+    { id: 'architecture', label: 'Architecture', icon: Layers },
+    { id: 'whitepaper', label: 'Whitepaper', icon: BookOpen }
   ];
 
   return (
@@ -1151,10 +1153,10 @@ export default function ARPRIDashboard() {
         {/* Architecture Tab */}
         {activeTab === 'architecture' && (
           <div className="space-y-8">
-            <SectionHeader 
-              icon={Layers} 
-              title="Security Architecture" 
-              subtitle="AI-native payments security stack" 
+            <SectionHeader
+              icon={Layers}
+              title="Security Architecture"
+              subtitle="AI-native payments security stack"
             />
 
             {/* Security Stack */}
@@ -1231,6 +1233,9 @@ export default function ARPRIDashboard() {
             </div>
           </div>
         )}
+
+        {/* Whitepaper Tab */}
+        {activeTab === 'whitepaper' && <WhitepaperTab />}
       </main>
 
       {/* Footer */}
