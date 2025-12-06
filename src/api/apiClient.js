@@ -247,6 +247,14 @@ class APIClient {
   }
 
   // ===================
+  // Industry Metrics APIs
+  // ===================
+
+  async getIndustryMetrics() {
+    return this.fetch('/api/industry');
+  }
+
+  // ===================
   // Dashboard Summary
   // ===================
 

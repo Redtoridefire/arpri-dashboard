@@ -170,6 +170,17 @@ export function useExternalFeeds(refreshInterval = null) {
 }
 
 /**
+ * Hook for fetching industry metrics - DISABLED POLLING BY DEFAULT
+ */
+export function useIndustryMetrics(refreshInterval = null) {
+  return useAPI(
+    () => apiClient.getIndustryMetrics(),
+    [],
+    { refreshInterval }
+  );
+}
+
+/**
  * Hook for fetching all dashboard data
  */
 export function useDashboard(refreshInterval = null) {
@@ -211,6 +222,7 @@ export default {
   useCompliance,
   useSystemStatus,
   useExternalFeeds,
+  useIndustryMetrics,
   useDashboard,
   useFraudRealTime,
   useModelTrends
