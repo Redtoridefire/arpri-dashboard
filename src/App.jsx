@@ -11,85 +11,22 @@ import {
   BarChart3, PieChart as PieIcon, Layers, Target, AlertCircle,
   MessageSquare, Send, Bot, X, Download, ChevronRight, ChevronDown,
   GitBranch, Box, Workflow, FileText, Settings, Info, ExternalLink,
-  Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen
+  Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen, Loader
 } from 'lucide-react';
 import WhitepaperTab from './WhitepaperTab';
 import InteractiveArchitecture from './InteractiveArchitecture';
+import {
+  useResilience,
+  useThreats,
+  useModels,
+  useFraud,
+  useCompliance,
+  useSystemStatus
+} from './api/useAPI';
 
 // ============================================================================
-// DATA MODELS
+// DATA MODELS (Now using dynamic API data)
 // ============================================================================
-
-const resilienceData = {
-  overall: 78,
-  previousMonth: 75,
-  categories: {
-    aiGovernance: { score: 82, trend: 'up', change: 3 },
-    fraudDetection: { score: 85, trend: 'up', change: 2 },
-    dataPrivacy: { score: 71, trend: 'down', change: -2 },
-    operationalResilience: { score: 79, trend: 'up', change: 4 },
-    supplyChainSecurity: { score: 68, trend: 'stable', change: 0 },
-    compliancePosture: { score: 88, trend: 'up', change: 1 }
-  }
-};
-
-const timeSeriesData = [
-  { month: 'Jan', riskScore: 72, incidents: 12, fraudBlocked: 98.2, uptime: 99.94, aiDecisions: 782000 },
-  { month: 'Feb', riskScore: 74, incidents: 9, fraudBlocked: 98.5, uptime: 99.97, aiDecisions: 801000 },
-  { month: 'Mar', riskScore: 71, incidents: 15, fraudBlocked: 98.1, uptime: 99.91, aiDecisions: 756000 },
-  { month: 'Apr', riskScore: 76, incidents: 8, fraudBlocked: 98.7, uptime: 99.98, aiDecisions: 823000 },
-  { month: 'May', riskScore: 78, incidents: 6, fraudBlocked: 98.9, uptime: 99.99, aiDecisions: 845000 },
-  { month: 'Jun', riskScore: 75, incidents: 11, fraudBlocked: 98.4, uptime: 99.95, aiDecisions: 812000 },
-  { month: 'Jul', riskScore: 79, incidents: 5, fraudBlocked: 99.1, uptime: 99.99, aiDecisions: 867000 },
-  { month: 'Aug', riskScore: 77, incidents: 7, fraudBlocked: 98.8, uptime: 99.97, aiDecisions: 834000 },
-  { month: 'Sep', riskScore: 80, incidents: 4, fraudBlocked: 99.2, uptime: 99.99, aiDecisions: 889000 },
-  { month: 'Oct', riskScore: 78, incidents: 6, fraudBlocked: 99.0, uptime: 99.98, aiDecisions: 856000 },
-  { month: 'Nov', riskScore: 81, incidents: 3, fraudBlocked: 99.3, uptime: 99.99, aiDecisions: 912000 },
-  { month: 'Dec', riskScore: 78, incidents: 5, fraudBlocked: 99.1, uptime: 99.97, aiDecisions: 892000 }
-];
-
-const radarData = [
-  { category: 'AI Governance', score: 82, fullMark: 100 },
-  { category: 'Fraud Detection', score: 85, fullMark: 100 },
-  { category: 'Data Privacy', score: 71, fullMark: 100 },
-  { category: 'Ops Resilience', score: 79, fullMark: 100 },
-  { category: 'Supply Chain', score: 68, fullMark: 100 },
-  { category: 'Compliance', score: 88, fullMark: 100 }
-];
-
-const threatVectors = [
-  { name: 'Model Poisoning', risk: 'HIGH', score: 72, trend: 'up', incidents: 3, description: 'Adversarial manipulation of training data to compromise model integrity', mitigation: 'Input validation, anomaly detection, model versioning' },
-  { name: 'Prompt Injection', risk: 'CRITICAL', score: 65, trend: 'up', incidents: 8, description: 'Malicious inputs designed to manipulate LLM behavior', mitigation: 'Input sanitization, output filtering, prompt hardening' },
-  { name: 'Data Exfiltration', risk: 'MEDIUM', score: 81, trend: 'down', incidents: 1, description: 'Unauthorized extraction of sensitive payment data via AI systems', mitigation: 'DLP controls, tokenization, access monitoring' },
-  { name: 'API Abuse', risk: 'HIGH', score: 74, trend: 'stable', incidents: 5, description: 'Exploitation of AI service endpoints for fraud or DoS', mitigation: 'Rate limiting, authentication, behavioral analysis' },
-  { name: 'Shadow AI', risk: 'HIGH', score: 69, trend: 'up', incidents: 12, description: 'Unauthorized AI tools processing payment data', mitigation: 'AI inventory, CASB integration, policy enforcement' },
-  { name: 'Supply Chain', risk: 'MEDIUM', score: 78, trend: 'down', incidents: 2, description: 'Compromised third-party models or training data', mitigation: 'Model SBOM, vendor assessment, integrity verification' }
-];
-
-const complianceFrameworks = [
-  { framework: 'NIST AI RMF', status: 'compliant', coverage: 94, lastAudit: '2024-11-15', nextAudit: '2025-05-15', findings: 2 },
-  { framework: 'PCI DSS 4.0', status: 'compliant', coverage: 98, lastAudit: '2024-10-22', nextAudit: '2025-04-22', findings: 1 },
-  { framework: 'NYDFS 500', status: 'compliant', coverage: 96, lastAudit: '2024-09-30', nextAudit: '2025-03-30', findings: 3 },
-  { framework: 'SOX', status: 'compliant', coverage: 99, lastAudit: '2024-11-01', nextAudit: '2025-05-01', findings: 0 },
-  { framework: 'GDPR/CCPA', status: 'partial', coverage: 87, lastAudit: '2024-08-15', nextAudit: '2025-02-15', findings: 5 },
-  { framework: 'OCC Guidelines', status: 'compliant', coverage: 92, lastAudit: '2024-10-10', nextAudit: '2025-04-10', findings: 2 }
-];
-
-const aiModelInventory = [
-  { name: 'FraudNet-v3.2', type: 'Detection', status: 'production', riskTier: 'high', lastValidation: '2024-11-20', driftScore: 2.1, accuracy: 99.2, latency: 12 },
-  { name: 'TokenAuth-LLM', type: 'Authentication', status: 'production', riskTier: 'critical', lastValidation: '2024-11-18', driftScore: 1.8, accuracy: 99.8, latency: 8 },
-  { name: 'TxnClassifier', type: 'Classification', status: 'production', riskTier: 'medium', lastValidation: '2024-11-22', driftScore: 3.4, accuracy: 97.5, latency: 15 },
-  { name: 'RiskScore-Agent', type: 'Agentic', status: 'staging', riskTier: 'critical', lastValidation: '2024-11-21', driftScore: 1.2, accuracy: 98.9, latency: 45 },
-  { name: 'CustomerIntent', type: 'NLP', status: 'production', riskTier: 'low', lastValidation: '2024-11-19', driftScore: 4.7, accuracy: 94.2, latency: 22 },
-  { name: 'AnomalyHunter', type: 'Detection', status: 'production', riskTier: 'high', lastValidation: '2024-11-17', driftScore: 2.9, accuracy: 98.1, latency: 18 }
-];
-
-const riskDistribution = [
-  { name: 'Critical', value: 8, color: '#ff4757' },
-  { name: 'High', value: 23, color: '#ffa502' },
-  { name: 'Medium', value: 42, color: '#2ed573' },
-  { name: 'Low', value: 27, color: '#1e90ff' }
-];
 
 // Architecture data for diagrams
 const architectureLayers = [
@@ -290,6 +227,36 @@ const LiveIndicator = () => (
       <div className="absolute inset-0 w-2 h-2 bg-green-500 rounded-full animate-ping" />
     </div>
     <span className="text-green-400 text-sm font-medium ml-2">LIVE</span>
+  </div>
+);
+
+// Loading Skeleton Component
+const LoadingSkeleton = ({ className = "" }) => (
+  <div className={`animate-pulse bg-gray-800/50 rounded ${className}`} />
+);
+
+// Error Display Component
+const ErrorDisplay = ({ message, onRetry }) => (
+  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
+    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+    <p className="text-red-400 mb-4">{message || 'Failed to load data'}</p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-colors"
+      >
+        Retry
+      </button>
+    )}
+  </div>
+);
+
+// Loading Card Component
+const LoadingCard = () => (
+  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+    <LoadingSkeleton className="h-6 w-32 mb-4" />
+    <LoadingSkeleton className="h-10 w-24 mb-2" />
+    <LoadingSkeleton className="h-4 w-40" />
   </div>
 );
 
@@ -608,37 +575,44 @@ const ExportButton = ({ onExport }) => (
 
 export default function ARPRIDashboard() {
   const [activeTab, setActiveTab] = useState('overview');
-  const [animatedMetrics, setAnimatedMetrics] = useState({
-    txnPerSecond: 47892,
-    fraudAttempts: 1247,
-    aiDecisions: 892456,
-    blockedRate: 99.2,
-    humanEscalations: 234
-  });
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  // Simulate real-time updates
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimatedMetrics(prev => ({
-        ...prev,
-        txnPerSecond: prev.txnPerSecond + Math.floor(Math.random() * 200 - 100),
-        fraudAttempts: prev.fraudAttempts + Math.floor(Math.random() * 10),
-        aiDecisions: prev.aiDecisions + Math.floor(Math.random() * 1000)
-      }));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Fetch data from APIs with auto-refresh
+  const { data: resilienceData, loading: resilienceLoading, error: resilienceError, refresh: refreshResilience } = useResilience();
+  const { data: threatData, loading: threatLoading, error: threatError, refresh: refreshThreats } = useThreats();
+  const { data: modelData, loading: modelLoading, error: modelError, refresh: refreshModels } = useModels();
+  const { data: fraudData, loading: fraudLoading, error: fraudError } = useFraud(5000); // Poll every 5s
+  const { data: complianceData, loading: complianceLoading, error: complianceError, refresh: refreshCompliance } = useCompliance();
+
+  // Extract data from API responses with fallbacks
+  const resilienceScore = resilienceData?.score || {};
+  const timeSeriesData = resilienceData?.timeseries || [];
+  const radarData = resilienceData?.radar || [];
+  const riskDistribution = resilienceData?.distribution || [];
+
+  const threatVectors = threatData?.threats || [];
+  const complianceFrameworks = complianceData?.status || [];
+  const aiModelInventory = modelData?.models || [];
+
+  // Real-time fraud metrics
+  const fraudMetrics = fraudData?.realtime || {
+    transactionsPerSecond: 0,
+    fraudAttempts: 0,
+    blockedRate: 0,
+    totalDecisions: 0,
+    humanEscalations: 0
+  };
 
   const handleExport = () => {
     const data = {
       exportDate: new Date().toISOString(),
       resilience: resilienceData,
-      threats: threatVectors,
-      compliance: complianceFrameworks,
-      models: aiModelInventory
+      threats: threatData,
+      compliance: complianceData,
+      models: modelData,
+      fraud: fraudData
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -732,88 +706,118 @@ export default function ARPRIDashboard() {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Top Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <MetricCard
-                title="Overall Resilience"
-                value={`${resilienceData.overall}/100`}
-                subtitle="Enterprise Score"
-                icon={Shield}
-                trend="up"
-                trendValue="+3.2 this month"
-                color="cyan"
+            {resilienceLoading || fraudLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <LoadingCard />
+                <LoadingCard />
+                <LoadingCard />
+                <LoadingCard />
+              </div>
+            ) : resilienceError || fraudError ? (
+              <ErrorDisplay
+                message={resilienceError || fraudError}
+                onRetry={() => {
+                  refreshResilience();
+                }}
               />
-              <MetricCard
-                title="Transactions/sec"
-                value={formatNumber(animatedMetrics.txnPerSecond)}
-                subtitle="Real-time volume"
-                icon={Zap}
-                trend="up"
-                trendValue="+12% from baseline"
-                color="green"
-              />
-              <MetricCard
-                title="Fraud Blocked"
-                value={`${animatedMetrics.blockedRate}%`}
-                subtitle={`${formatNumber(animatedMetrics.fraudAttempts)} attempts today`}
-                icon={Lock}
-                trend="up"
-                trendValue="+0.3% accuracy"
-                color="purple"
-              />
-              <MetricCard
-                title="AI Decisions"
-                value={formatNumber(animatedMetrics.aiDecisions)}
-                subtitle={`${animatedMetrics.humanEscalations} escalations`}
-                icon={Cpu}
-                trend="stable"
-                trendValue="0.03% escalation rate"
-                color="orange"
-              />
-            </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title="Overall Resilience"
+                  value={`${resilienceScore.overall || 0}/100`}
+                  subtitle="Enterprise Score"
+                  icon={Shield}
+                  trend={resilienceScore.overall > resilienceScore.previousMonth ? "up" : "down"}
+                  trendValue={`${resilienceScore.overall > resilienceScore.previousMonth ? '+' : ''}${((resilienceScore.overall || 0) - (resilienceScore.previousMonth || 0)).toFixed(1)} this month`}
+                  color="cyan"
+                />
+                <MetricCard
+                  title="Transactions/sec"
+                  value={formatNumber(fraudMetrics.transactionsPerSecond)}
+                  subtitle="Real-time volume"
+                  icon={Zap}
+                  trend="up"
+                  trendValue="Live data"
+                  color="green"
+                />
+                <MetricCard
+                  title="Fraud Blocked"
+                  value={`${(fraudMetrics.blockedRate || 0).toFixed(1)}%`}
+                  subtitle={`${formatNumber(fraudMetrics.fraudAttempts)} attempts`}
+                  icon={Lock}
+                  trend="up"
+                  trendValue="Real-time"
+                  color="purple"
+                />
+                <MetricCard
+                  title="AI Decisions"
+                  value={formatNumber(fraudMetrics.totalDecisions)}
+                  subtitle={`${fraudMetrics.humanEscalations} escalations`}
+                  icon={Cpu}
+                  trend="stable"
+                  trendValue={`${((fraudMetrics.humanEscalations / fraudMetrics.totalDecisions) * 100 || 0).toFixed(2)}% rate`}
+                  color="orange"
+                />
+              </div>
+            )}
 
             {/* Resilience Scores + Trend Chart */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Resilience Gauges */}
               <div className="col-span-1 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                 <SectionHeader icon={Target} title="Resilience Index" subtitle="Domain Scores" />
-                <div className="grid grid-cols-3 gap-4">
-                  <ResilienceGauge 
-                    score={resilienceData.categories.aiGovernance.score} 
-                    label="AI Gov" 
-                    previousScore={resilienceData.categories.aiGovernance.score - resilienceData.categories.aiGovernance.change}
-                  />
-                  <ResilienceGauge 
-                    score={resilienceData.categories.fraudDetection.score} 
-                    label="Fraud"
-                    previousScore={resilienceData.categories.fraudDetection.score - resilienceData.categories.fraudDetection.change}
-                  />
-                  <ResilienceGauge 
-                    score={resilienceData.categories.dataPrivacy.score} 
-                    label="Privacy"
-                    previousScore={resilienceData.categories.dataPrivacy.score - resilienceData.categories.dataPrivacy.change}
-                  />
-                  <ResilienceGauge 
-                    score={resilienceData.categories.operationalResilience.score} 
-                    label="Ops"
-                    previousScore={resilienceData.categories.operationalResilience.score - resilienceData.categories.operationalResilience.change}
-                  />
-                  <ResilienceGauge 
-                    score={resilienceData.categories.supplyChainSecurity.score} 
-                    label="Supply"
-                    previousScore={resilienceData.categories.supplyChainSecurity.score - resilienceData.categories.supplyChainSecurity.change}
-                  />
-                  <ResilienceGauge 
-                    score={resilienceData.categories.compliancePosture.score} 
-                    label="Comply"
-                    previousScore={resilienceData.categories.compliancePosture.score - resilienceData.categories.compliancePosture.change}
-                  />
-                </div>
+                {resilienceLoading ? (
+                  <div className="grid grid-cols-3 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <LoadingSkeleton className="w-28 h-28 rounded-full mb-2" />
+                        <LoadingSkeleton className="h-4 w-16" />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.aiGovernance?.score || 0}
+                      label="AI Gov"
+                      previousScore={(resilienceScore.categories?.aiGovernance?.score || 0) - (resilienceScore.categories?.aiGovernance?.change || 0)}
+                    />
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.fraudDetection?.score || 0}
+                      label="Fraud"
+                      previousScore={(resilienceScore.categories?.fraudDetection?.score || 0) - (resilienceScore.categories?.fraudDetection?.change || 0)}
+                    />
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.dataPrivacy?.score || 0}
+                      label="Privacy"
+                      previousScore={(resilienceScore.categories?.dataPrivacy?.score || 0) - (resilienceScore.categories?.dataPrivacy?.change || 0)}
+                    />
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.operationalResilience?.score || 0}
+                      label="Ops"
+                      previousScore={(resilienceScore.categories?.operationalResilience?.score || 0) - (resilienceScore.categories?.operationalResilience?.change || 0)}
+                    />
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.supplyChainSecurity?.score || 0}
+                      label="Supply"
+                      previousScore={(resilienceScore.categories?.supplyChainSecurity?.score || 0) - (resilienceScore.categories?.supplyChainSecurity?.change || 0)}
+                    />
+                    <ResilienceGauge
+                      score={resilienceScore.categories?.compliancePosture?.score || 0}
+                      label="Comply"
+                      previousScore={(resilienceScore.categories?.compliancePosture?.score || 0) - (resilienceScore.categories?.compliancePosture?.change || 0)}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Trend Chart */}
               <div className="col-span-2 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                 <SectionHeader icon={Activity} title="12-Month Trend" subtitle="Risk Score & Incident Correlation" />
-                <ResponsiveContainer width="100%" height={280}>
+                {resilienceLoading ? (
+                  <LoadingSkeleton className="h-[280px] w-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={280}>
                   <AreaChart data={timeSeriesData}>
                     <defs>
                       <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
@@ -848,6 +852,7 @@ export default function ARPRIDashboard() {
                     />
                   </AreaChart>
                 </ResponsiveContainer>
+                )}
               </div>
             </div>
 
@@ -856,7 +861,10 @@ export default function ARPRIDashboard() {
               {/* Radar Chart */}
               <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                 <SectionHeader icon={Layers} title="Domain Analysis" subtitle="Capability Radar" />
-                <ResponsiveContainer width="100%" height={300}>
+                {resilienceLoading ? (
+                  <LoadingSkeleton className="h-[300px] w-full" />
+                ) : (
+                  <ResponsiveContainer width="100%" height={300}>
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.1)" />
                     <PolarAngleAxis dataKey="category" tick={{ fill: '#888', fontSize: 11 }} />
@@ -878,13 +886,17 @@ export default function ARPRIDashboard() {
                     />
                   </RadarChart>
                 </ResponsiveContainer>
+                )}
               </div>
 
               {/* Risk Distribution */}
               <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                 <SectionHeader icon={PieIcon} title="Risk Distribution" subtitle="By Severity Level" />
-                <div className="flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height={300}>
+                {resilienceLoading ? (
+                  <LoadingSkeleton className="h-[300px] w-full" />
+                ) : (
+                  <div className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
                         data={riskDistribution}
@@ -912,6 +924,7 @@ export default function ARPRIDashboard() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
+                )}
               </div>
             </div>
           </div>
@@ -920,14 +933,23 @@ export default function ARPRIDashboard() {
         {/* Threats Tab */}
         {activeTab === 'threats' && (
           <div className="space-y-6">
-            <SectionHeader 
-              icon={AlertTriangle} 
-              title="Threat Intelligence" 
-              subtitle="Active threat vectors and risk indicators" 
+            <SectionHeader
+              icon={AlertTriangle}
+              title="Threat Intelligence"
+              subtitle="Active threat vectors and risk indicators"
             />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {threatVectors.map((threat, index) => (
+
+            {threatLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <LoadingCard key={i} />
+                ))}
+              </div>
+            ) : threatError ? (
+              <ErrorDisplay message={threatError} onRetry={refreshThreats} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {threatVectors.map((threat, index) => (
                 <div 
                   key={index} 
                   onClick={() => setSelectedThreat(threat)}
@@ -959,8 +981,10 @@ export default function ARPRIDashboard() {
                 </div>
               ))}
             </div>
+            )}
 
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+            {!threatLoading && !threatError && (
+              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-white mb-4">Threat Trend Analysis</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={threatVectors}>
@@ -982,102 +1006,120 @@ export default function ARPRIDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            )}
           </div>
         )}
 
         {/* Compliance Tab */}
         {activeTab === 'compliance' && (
           <div className="space-y-6">
-            <SectionHeader 
-              icon={ShieldCheck} 
-              title="Compliance Posture" 
-              subtitle="Regulatory framework alignment and coverage" 
+            <SectionHeader
+              icon={ShieldCheck}
+              title="Compliance Posture"
+              subtitle="Regulatory framework alignment and coverage"
             />
-            
-            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-800 bg-black/30">
-                    <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Framework</th>
-                    <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Status</th>
-                    <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Coverage</th>
-                    <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Last Audit</th>
-                    <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Findings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {complianceFrameworks.map((item, index) => (
-                    <tr key={index} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
-                      <td className="py-3 px-4">
-                        <span className="text-white font-medium">{item.framework}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          item.status === 'compliant' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {item.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center">
-                          <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden mr-2">
-                            <div 
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${item.coverage}%`, backgroundColor: getScoreColor(item.coverage) }}
-                            />
-                          </div>
-                          <span className="text-gray-400 font-mono text-sm">{item.coverage}%</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-gray-500 text-sm">{item.lastAudit}</td>
-                      <td className="py-3 px-4">
-                        <span className={`font-mono ${item.findings > 0 ? 'text-orange-400' : 'text-green-400'}`}>
-                          {item.findings}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <MetricCard
-                title="Average Coverage"
-                value="94%"
-                subtitle="Across all frameworks"
-                icon={CheckCircle}
-                color="green"
-              />
-              <MetricCard
-                title="Next Audit"
-                value="Feb 15"
-                subtitle="GDPR/CCPA Assessment"
-                icon={Clock}
-                color="orange"
-              />
-              <MetricCard
-                title="Open Findings"
-                value="13"
-                subtitle="5 critical, 8 medium"
-                icon={AlertCircle}
-                color="red"
-              />
-            </div>
+            {complianceLoading ? (
+              <LoadingSkeleton className="h-96 w-full" />
+            ) : complianceError ? (
+              <ErrorDisplay message={complianceError} onRetry={refreshCompliance} />
+            ) : (
+              <>
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-800 bg-black/30">
+                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Framework</th>
+                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Status</th>
+                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Coverage</th>
+                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Last Audit</th>
+                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Findings</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {complianceFrameworks.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="text-white font-medium">{item.framework}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              item.status === 'compliant' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {item.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center">
+                              <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden mr-2">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${item.coverage}%`, backgroundColor: getScoreColor(item.coverage) }}
+                                />
+                              </div>
+                              <span className="text-gray-400 font-mono text-sm">{item.coverage}%</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-gray-500 text-sm">{item.lastAudit}</td>
+                          <td className="py-3 px-4">
+                            <span className={`font-mono ${item.findings > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                              {item.findings}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <MetricCard
+                    title="Average Coverage"
+                    value="94%"
+                    subtitle="Across all frameworks"
+                    icon={CheckCircle}
+                    color="green"
+                  />
+                  <MetricCard
+                    title="Next Audit"
+                    value="Feb 15"
+                    subtitle="GDPR/CCPA Assessment"
+                    icon={Clock}
+                    color="orange"
+                  />
+                  <MetricCard
+                    title="Open Findings"
+                    value="13"
+                    subtitle="5 critical, 8 medium"
+                    icon={AlertCircle}
+                    color="red"
+                  />
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* AI Models Tab */}
         {activeTab === 'models' && (
           <div className="space-y-6">
-            <SectionHeader 
-              icon={Cpu} 
-              title="AI Model Inventory" 
-              subtitle="Production models and risk classification" 
+            <SectionHeader
+              icon={Cpu}
+              title="AI Model Inventory"
+              subtitle="Production models and risk classification"
             />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {aiModelInventory.map((model, index) => {
+
+            {modelLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <LoadingCard key={i} />
+                ))}
+              </div>
+            ) : modelError ? (
+              <ErrorDisplay message={modelError} onRetry={refreshModels} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {aiModelInventory.map((model, index) => {
                 const tierColors = {
                   critical: 'border-red-500/50 bg-red-500/10',
                   high: 'border-orange-500/50 bg-orange-500/10',
@@ -1126,8 +1168,10 @@ export default function ARPRIDashboard() {
                 );
               })}
             </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {!modelLoading && !modelError && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Model Drift Monitoring</h3>
                 <ResponsiveContainer width="100%" height={250}>
@@ -1170,6 +1214,7 @@ export default function ARPRIDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
+            )}
           </div>
         )}
 
