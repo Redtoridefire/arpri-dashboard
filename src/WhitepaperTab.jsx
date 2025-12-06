@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { BookOpen, Download } from 'lucide-react';
+import { BookOpen, Download, FileText } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const WhitepaperTab = () => {
   const [content, setContent] = useState('');
   const [toc, setToc] = useState([]);
   const [activeSection, setActiveSection] = useState('');
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   useEffect(() => {
     fetch('/ARPRI-Whitepaper.md')
@@ -34,6 +36,37 @@ const WhitepaperTab = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadPDF = async () => {
+    setIsGeneratingPDF(true);
+
+    try {
+      const element = document.querySelector('.whitepaper-content');
+      const options = {
+        margin: [15, 15, 15, 15],
+        filename: 'ARPRI-Whitepaper-2025.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#0a0f1a'
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait'
+        },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+
+      await html2pdf().set(options).from(element).save();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
   return (
     <div className="flex gap-8">
       {/* TOC Sidebar */}
@@ -55,13 +88,23 @@ const WhitepaperTab = () => {
             ))}
           </nav>
         </div>
-        <button
-          onClick={handleDownload}
-          className="mt-4 w-full flex items-center justify-center px-4 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all"
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Download .md
-        </button>
+        <div className="space-y-2 mt-4">
+          <button
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPDF}
+            className="w-full flex items-center justify-center px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-400 hover:bg-purple-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="w-full flex items-center justify-center px-4 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-xl text-cyan-400 hover:bg-cyan-500/30 transition-all"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download .md
+          </button>
+        </div>
       </aside>
 
       {/* Content */}

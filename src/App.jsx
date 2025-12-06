@@ -14,6 +14,7 @@ import {
   Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen
 } from 'lucide-react';
 import WhitepaperTab from './WhitepaperTab';
+import InteractiveArchitecture from './InteractiveArchitecture';
 
 // ============================================================================
 // DATA MODELS
@@ -309,39 +310,61 @@ const AIAgentChat = ({ isOpen, onClose }) => {
     scrollToBottom();
   }, [messages]);
 
-  const processQuery = (query) => {
+  const processQueryFallback = (query) => {
     const lowerQuery = query.toLowerCase();
-    
+
     // Find matching topic
     for (const [key, data] of Object.entries(agentKnowledge)) {
       if (lowerQuery.includes(key) || lowerQuery.includes(key.replace(' ', ''))) {
-        return {
-          topic: key,
-          response: `**${key.charAt(0).toUpperCase() + key.slice(1)}**\n\n${data.definition}\n\n**Payments Context:**\n${data.paymentsContext}\n\n**Key Mitigations:**\n${data.mitigations.map(m => `• ${m}`).join('\n')}\n\n**Relevant Frameworks:** ${data.frameworks.join(', ')}`
-        };
+        return `**${key.charAt(0).toUpperCase() + key.slice(1)}**\n\n${data.definition}\n\n**Payments Context:**\n${data.paymentsContext}\n\n**Key Mitigations:**\n${data.mitigations.map(m => `• ${m}`).join('\n')}\n\n**Relevant Frameworks:** ${data.frameworks.join(', ')}`;
       }
     }
 
     // Generic response
-    return {
-      topic: null,
-      response: "I can provide detailed information on several AI security topics relevant to payments:\n\n• **Prompt Injection** - LLM manipulation attacks\n• **Model Poisoning** - Training data corruption\n• **Zero Trust** - Identity-first security\n• **Tokenization** - Data protection\n• **Agentic AI** - Autonomous AI risks\n• **DSPM** - Data security posture\n\nWhich topic would you like to explore?"
-    };
+    return "I can provide detailed information on several AI security topics relevant to payments:\n\n• **Prompt Injection** - LLM manipulation attacks\n• **Model Poisoning** - Training data corruption\n• **Zero Trust** - Identity-first security\n• **Tokenization** - Data protection\n• **Agentic AI** - Autonomous AI risks\n• **DSPM** - Data security posture\n\nWhich topic would you like to explore?";
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
 
     const userMessage = { role: 'user', content: input };
+    const currentInput = input;
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const { response } = processQuery(input);
-      setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+    try {
+      // Try to use Claude API
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: currentInput })
+      });
+
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+
+      const data = await response.json();
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.response,
+        isDemoMode: data.isDemoMode
+      }]);
+    } catch (error) {
+      console.log('Using fallback response:', error);
+      // Fallback to static knowledge base
+      const fallbackResponse = processQueryFallback(currentInput);
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: fallbackResponse + '\n\n_Note: Using fallback mode. Configure ANTHROPIC_API_KEY for live responses._',
+        isDemoMode: true
+      }]);
+    } finally {
       setIsTyping(false);
-    }, 1000);
+    }
   };
 
   if (!isOpen) return null;
@@ -1159,22 +1182,28 @@ export default function ARPRIDashboard() {
               subtitle="AI-native payments security stack"
             />
 
-            {/* Security Stack */}
+            {/* Interactive Security Stack */}
             <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-white mb-6 flex items-center">
                 <Server className="w-5 h-5 text-cyan-400 mr-2" />
-                AI Security Stack
+                Interactive AI Security Stack
               </h3>
-              <ArchitectureDiagram type="stack" />
+              <p className="text-gray-400 text-sm mb-4">
+                Click and drag to explore • Zoom with scroll • Pan with mouse
+              </p>
+              <InteractiveArchitecture type="security-stack" />
             </div>
 
-            {/* Transaction Flow */}
+            {/* Interactive Transaction Flow */}
             <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-white mb-6 flex items-center">
                 <Workflow className="w-5 h-5 text-cyan-400 mr-2" />
-                Transaction Processing Flow
+                Interactive Transaction Processing Flow
               </h3>
-              <ArchitectureDiagram type="flow" />
+              <p className="text-gray-400 text-sm mb-4">
+                Animated data flows showing real-time transaction processing
+              </p>
+              <InteractiveArchitecture type="transaction-flow" />
             </div>
 
             {/* Zero Trust + DSPM Grid */}
