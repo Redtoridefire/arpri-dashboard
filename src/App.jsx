@@ -11,7 +11,7 @@ import {
   BarChart3, PieChart as PieIcon, Layers, Target, AlertCircle,
   MessageSquare, Send, Bot, X, Download, ChevronRight, ChevronDown,
   GitBranch, Box, Workflow, FileText, Settings, Info, ExternalLink,
-  Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen, Loader
+  Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen, Loader, Rss
 } from 'lucide-react';
 import WhitepaperTab from './WhitepaperTab';
 import InteractiveArchitecture from './InteractiveArchitecture';
@@ -21,7 +21,8 @@ import {
   useModels,
   useFraud,
   useCompliance,
-  useSystemStatus
+  useSystemStatus,
+  useExternalFeeds
 } from './api/useAPI';
 
 // ============================================================================
@@ -585,6 +586,7 @@ export default function ARPRIDashboard() {
   const { data: modelData, loading: modelLoading, error: modelError, refresh: refreshModels } = useModels();
   const { data: fraudData, loading: fraudLoading, error: fraudError } = useFraud(); // No auto-polling
   const { data: complianceData, loading: complianceLoading, error: complianceError, refresh: refreshCompliance } = useCompliance();
+  const { data: feedsData, loading: feedsLoading, error: feedsError, refresh: refreshFeeds } = useExternalFeeds();
 
   // Extract data from API responses with fallbacks
   const resilienceScore = resilienceData?.score || {};
@@ -627,6 +629,7 @@ export default function ARPRIDashboard() {
     { id: 'threats', label: 'Threat Intel', icon: AlertTriangle },
     { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
     { id: 'models', label: 'AI Models', icon: Cpu },
+    { id: 'feeds', label: 'Intel Feeds', icon: Rss },
     { id: 'architecture', label: 'Architecture', icon: Layers },
     { id: 'whitepaper', label: 'Whitepaper', icon: BookOpen }
   ];
@@ -1214,6 +1217,246 @@ export default function ARPRIDashboard() {
                 </ResponsiveContainer>
               </div>
             </div>
+            )}
+          </div>
+        )}
+
+        {/* Intelligence Feeds Tab */}
+        {activeTab === 'feeds' && (
+          <div className="space-y-6">
+            <SectionHeader
+              icon={Rss}
+              title="External Intelligence Feeds"
+              subtitle="Real-time threat intelligence from NIST NVD and CISA KEV"
+              action={
+                <button
+                  onClick={refreshFeeds}
+                  disabled={feedsLoading}
+                  className="flex items-center px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/30 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${feedsLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              }
+            />
+
+            {feedsLoading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <LoadingSkeleton className="h-96 w-full rounded-2xl" />
+                <LoadingSkeleton className="h-96 w-full rounded-2xl" />
+              </div>
+            ) : feedsError ? (
+              <ErrorDisplay message={feedsError} onRetry={refreshFeeds} />
+            ) : (
+              <>
+                {/* Data Source Indicator */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Info className="w-5 h-5 text-cyan-400 mr-2" />
+                      <span className="text-gray-400 text-sm">Data Source:</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center">
+                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                          feedsData?.source === 'external' ? 'bg-green-500' :
+                          feedsData?.source === 'cache' ? 'bg-yellow-500' : 'bg-orange-500'
+                        }`} />
+                        <span className="text-sm font-mono text-gray-300">
+                          {feedsData?.source === 'external' ? 'Live External APIs' :
+                           feedsData?.source === 'cache' ? 'Cached (30min)' : 'Synthetic Fallback'}
+                        </span>
+                      </div>
+                      {feedsData?.timestamp && (
+                        <span className="text-xs text-gray-600">
+                          Updated: {new Date(feedsData.timestamp).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* NIST NVD CVE Feed */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 mr-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">NIST NVD Vulnerabilities</h3>
+                          <p className="text-sm text-gray-500">Latest AI-related CVEs from National Vulnerability Database</p>
+                        </div>
+                      </div>
+                      <a
+                        href="https://nvd.nist.gov/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        nvd.nist.gov
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto">
+                    {feedsData?.nvd?.length > 0 ? (
+                      <div className="divide-y divide-gray-800">
+                        {feedsData.nvd.map((cve, index) => {
+                          const severityColors = {
+                            'CRITICAL': 'bg-red-500/20 text-red-400 border-red-500/50',
+                            'HIGH': 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+                            'MEDIUM': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+                            'LOW': 'bg-green-500/20 text-green-400 border-green-500/50'
+                          };
+
+                          return (
+                            <div key={index} className="p-4 hover:bg-white/5 transition-colors">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center">
+                                  <a
+                                    href={`https://nvd.nist.gov/vuln/detail/${cve.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                  >
+                                    {cve.id}
+                                  </a>
+                                  {cve.source && (
+                                    <span className="ml-2 px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-500">
+                                      {cve.source}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium border ${severityColors[cve.severity] || severityColors['MEDIUM']}`}>
+                                    {cve.severity}
+                                  </span>
+                                  <span className="font-mono text-sm text-white font-bold">
+                                    {cve.score?.toFixed(1) || 'N/A'}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-400 mb-2">{cve.description}</p>
+                              <div className="flex items-center text-xs text-gray-600">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Published: {new Date(cve.published).toLocaleDateString()}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        No CVE data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CISA KEV Catalog */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="p-2 rounded-lg bg-orange-500/20 border border-orange-500/30 mr-3">
+                          <ShieldCheck className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">CISA Known Exploited Vulnerabilities</h3>
+                          <p className="text-sm text-gray-500">Actively exploited vulnerabilities from CISA KEV Catalog</p>
+                        </div>
+                      </div>
+                      <a
+                        href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        cisa.gov/kev
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto">
+                    {feedsData?.cisa?.length > 0 ? (
+                      <div className="divide-y divide-gray-800">
+                        {feedsData.cisa.map((vuln, index) => (
+                          <div key={index} className="p-4 hover:bg-white/5 transition-colors">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center mb-1">
+                                  <a
+                                    href={`https://nvd.nist.gov/vuln/detail/${vuln.cveID}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                  >
+                                    {vuln.cveID}
+                                  </a>
+                                  {vuln.source && (
+                                    <span className="ml-2 px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-500">
+                                      {vuln.source}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm font-medium text-white mb-1">{vuln.vulnerabilityName}</p>
+                                <div className="flex items-center text-xs text-gray-500 mb-2">
+                                  <span>{vuln.vendorProject}</span>
+                                  <span className="mx-2">•</span>
+                                  <span>{vuln.product}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-sm text-gray-400 mb-2">{vuln.shortDescription}</p>
+                            <div className="bg-orange-500/10 border border-orange-500/30 rounded p-2 mb-2">
+                              <p className="text-xs text-orange-400">
+                                <span className="font-semibold">Required Action:</span> {vuln.requiredAction}
+                              </p>
+                            </div>
+                            <div className="flex items-center text-xs text-gray-600">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Added to KEV: {new Date(vuln.dateAdded).toLocaleDateString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        No CISA KEV data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <MetricCard
+                    title="NVD Vulnerabilities"
+                    value={feedsData?.nvd?.length || 0}
+                    subtitle="AI-related CVEs"
+                    icon={AlertTriangle}
+                    color="red"
+                  />
+                  <MetricCard
+                    title="CISA KEV Catalog"
+                    value={feedsData?.cisa?.length || 0}
+                    subtitle="Actively exploited"
+                    icon={ShieldCheck}
+                    color="orange"
+                  />
+                  <MetricCard
+                    title="Feed Status"
+                    value={feedsData?.source === 'external' ? 'LIVE' : feedsData?.source === 'cache' ? 'CACHED' : 'FALLBACK'}
+                    subtitle={feedsData?.source === 'external' ? 'Real-time data' : feedsData?.source === 'cache' ? '< 30 min old' : 'Synthetic data'}
+                    icon={Rss}
+                    color={feedsData?.source === 'external' ? 'green' : feedsData?.source === 'cache' ? 'orange' : 'purple'}
+                  />
+                </div>
+              </>
             )}
           </div>
         )}
