@@ -22,7 +22,8 @@ import {
   useFraud,
   useCompliance,
   useSystemStatus,
-  useExternalFeeds
+  useExternalFeeds,
+  useIndustryMetrics
 } from './api/useAPI';
 
 // ============================================================================
@@ -587,6 +588,7 @@ export default function ARPRIDashboard() {
   const { data: fraudData, loading: fraudLoading, error: fraudError } = useFraud(); // No auto-polling
   const { data: complianceData, loading: complianceLoading, error: complianceError, refresh: refreshCompliance } = useCompliance();
   const { data: feedsData, loading: feedsLoading, error: feedsError, refresh: refreshFeeds } = useExternalFeeds();
+  const { data: industryData, loading: industryLoading, error: industryError, refresh: refreshIndustry } = useIndustryMetrics();
 
   // Extract data from API responses with fallbacks
   const resilienceScore = resilienceData?.score || {};
@@ -705,61 +707,65 @@ export default function ARPRIDashboard() {
       {/* Main Content */}
       <main className="relative max-w-[1600px] mx-auto px-6 py-8">
         
-        {/* Overview Tab */}
+        {/* Overview Tab - Global AI Risk Landscape */}
         {activeTab === 'overview' && (
           <div className="space-y-8">
-            {/* Top Metrics Row */}
-            {resilienceLoading || fraudLoading ? (
+            {/* Header */}
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold text-white mb-2">Global AI Risk Landscape</h2>
+              <p className="text-gray-400">Industry-wide AI security metrics from authoritative sources (NIST NVD, CISA KEV, GitHub, OWASP)</p>
+            </div>
+
+            {/* Top Metrics Row - Real Industry Data */}
+            {industryLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <LoadingCard />
                 <LoadingCard />
                 <LoadingCard />
                 <LoadingCard />
               </div>
-            ) : resilienceError || fraudError ? (
+            ) : industryError ? (
               <ErrorDisplay
-                message={resilienceError || fraudError}
-                onRetry={() => {
-                  refreshResilience();
-                }}
+                message={industryError}
+                onRetry={refreshIndustry}
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
-                  title="Overall Resilience"
-                  value={`${resilienceScore.overall || 0}/100`}
-                  subtitle="Enterprise Score"
-                  icon={Shield}
-                  trend={resilienceScore.overall > resilienceScore.previousMonth ? "up" : "down"}
-                  trendValue={`${resilienceScore.overall > resilienceScore.previousMonth ? '+' : ''}${((resilienceScore.overall || 0) - (resilienceScore.previousMonth || 0)).toFixed(1)} this month`}
-                  color="cyan"
+                  title="Critical CVEs"
+                  value={industryData?.overview?.criticalCVEs || 0}
+                  subtitle="Industry-wide (sample)"
+                  icon={AlertTriangle}
+                  trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
+                  trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
+                  color="red"
                 />
                 <MetricCard
-                  title="Transactions/sec"
-                  value={formatNumber(fraudMetrics.transactionsPerSecond)}
-                  subtitle="Real-time volume"
-                  icon={Zap}
+                  title="Actively Exploited"
+                  value={industryData?.overview?.activellyExploited || 0}
+                  subtitle="CISA KEV Catalog"
+                  icon={ShieldCheck}
                   trend="up"
-                  trendValue="Live data"
-                  color="green"
-                />
-                <MetricCard
-                  title="Fraud Blocked"
-                  value={`${(fraudMetrics.blockedRate || 0).toFixed(1)}%`}
-                  subtitle={`${formatNumber(fraudMetrics.fraudAttempts)} attempts`}
-                  icon={Lock}
-                  trend="up"
-                  trendValue="Real-time"
-                  color="purple"
-                />
-                <MetricCard
-                  title="AI Decisions"
-                  value={formatNumber(fraudMetrics.totalDecisions)}
-                  subtitle={`${fraudMetrics.humanEscalations} escalations`}
-                  icon={Cpu}
-                  trend="stable"
-                  trendValue={`${((fraudMetrics.humanEscalations / fraudMetrics.totalDecisions) * 100 || 0).toFixed(2)}% rate`}
+                  trendValue="Real-time from CISA"
                   color="orange"
+                />
+                <MetricCard
+                  title="Avg CVSS Score"
+                  value={(industryData?.overview?.avgCVSS || 0).toFixed(1)}
+                  subtitle="Industry baseline"
+                  icon={BarChart3}
+                  trend="stable"
+                  trendValue="NVD calculated"
+                  color="yellow"
+                />
+                <MetricCard
+                  title="AI-Specific CVEs"
+                  value={industryData?.aiSpecificRisks?.totalAICVEs || 0}
+                  subtitle="AI/ML vulnerabilities"
+                  icon={Cpu}
+                  trend="up"
+                  trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
+                  color="purple"
                 />
               </div>
             )}
