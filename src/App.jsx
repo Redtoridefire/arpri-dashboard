@@ -939,82 +939,183 @@ export default function ARPRIDashboard() {
           </div>
         )}
 
-        {/* Threats Tab */}
+        {/* Threats Tab - Real Threat Intelligence */}
         {activeTab === 'threats' && (
           <div className="space-y-6">
-            <SectionHeader
-              icon={AlertTriangle}
-              title="Threat Intelligence"
-              subtitle="Active threat vectors and risk indicators"
-            />
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold text-white mb-2">AI/ML Threat Intelligence</h2>
+              <p className="text-gray-400">Real threat landscape based on OWASP Top 10 for LLMs and live CVE data from NIST NVD</p>
+            </div>
 
-            {threatLoading ? (
+            {/* OWASP Top 10 for LLMs - Primary Threat Framework */}
+            {feedsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <LoadingCard key={i} />
                 ))}
               </div>
-            ) : threatError ? (
-              <ErrorDisplay message={threatError} onRetry={refreshThreats} />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {threatVectors.map((threat, index) => (
-                <div 
-                  key={index} 
-                  onClick={() => setSelectedThreat(threat)}
-                  className="bg-gray-900/50 border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-all cursor-pointer hover:scale-[1.02]"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-white font-medium">{threat.name}</span>
-                    <span className={`px-2 py-1 rounded text-xs font-bold border ${getRiskBadgeColor(threat.risk)}`}>
-                      {threat.risk}
-                    </span>
+            ) : feedsError ? (
+              <ErrorDisplay message={feedsError} onRetry={refreshFeeds} />
+            ) : feedsData?.owasp?.data ? (
+              <>
+                {/* OWASP Top 10 Cards */}
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-white">OWASP Top 10 for LLMs (2023)</h3>
+                    <a
+                      href="https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      View Official Framework
+                    </a>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center">
-                      <span className="text-gray-500 mr-2">Score:</span>
-                      <span className="font-mono" style={{ color: getScoreColor(threat.score) }}>{threat.score}</span>
-                    </div>
-                    <div className="flex items-center">
-                      {threat.trend === 'up' ? (
-                        <TrendingUp className="w-4 h-4 text-red-400" />
-                      ) : threat.trend === 'down' ? (
-                        <TrendingDown className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <Activity className="w-4 h-4 text-gray-400" />
-                      )}
-                      <span className="text-gray-500 ml-2">{threat.incidents} incidents</span>
-                    </div>
-                  </div>
-                  <p className="text-gray-500 text-xs mt-2 line-clamp-2">{threat.description}</p>
-                </div>
-              ))}
-            </div>
-            )}
 
-            {!threatLoading && !threatError && (
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Threat Trend Analysis</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={threatVectors}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="name" stroke="#666" fontSize={11} angle={-15} textAnchor="end" height={60} />
-                  <YAxis stroke="#666" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: '#1a1f2e', 
-                      border: '1px solid #333',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar dataKey="score" fill="#00ffc8" radius={[4, 4, 0, 0]}>
-                    {threatVectors.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getScoreColor(entry.score)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {feedsData.owasp.data.map((threat, index) => {
+                      const severityColors = {
+                        'CRITICAL': 'border-red-500/50 bg-red-500/10',
+                        'HIGH': 'border-orange-500/50 bg-orange-500/10',
+                        'MEDIUM': 'border-yellow-500/50 bg-yellow-500/10',
+                        'LOW': 'border-green-500/50 bg-green-500/10'
+                      };
+
+                      return (
+                        <div
+                          key={index}
+                          onClick={() => setSelectedThreat(threat)}
+                          className={`rounded-lg border ${severityColors[threat.severity]} p-4 hover:scale-[1.02] transition-all cursor-pointer`}
+                        >
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center">
+                              <span className="text-2xl font-bold text-cyan-400 mr-2">#{threat.rank}</span>
+                              <span className={`px-2 py-1 rounded text-xs font-bold border ${getRiskBadgeColor(threat.severity)}`}>
+                                {threat.severity}
+                              </span>
+                            </div>
+                            <span className="text-xs font-mono text-gray-500">{threat.id}</span>
+                          </div>
+                          <h4 className="text-white font-semibold mb-2">{threat.name}</h4>
+                          <p className="text-gray-400 text-sm line-clamp-3 mb-3">{threat.description}</p>
+                          <div className="flex items-center text-xs text-gray-600">
+                            <Shield className="w-3 h-3 mr-1" />
+                            <span>{threat.cweId}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Industry Threat Statistics */}
+                {industryData && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="p-2 rounded-lg bg-red-500/20 border border-red-500/30 mr-3">
+                          <AlertTriangle className="w-5 h-5 text-red-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">Critical Severity</h3>
+                          <p className="text-sm text-gray-500">OWASP + NVD Combined</p>
+                        </div>
+                      </div>
+                      <p className="text-4xl font-bold text-red-400 font-mono mb-2">
+                        {(feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length || 0) + (industryData.overview?.criticalCVEs || 0)}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length} OWASP + {industryData.overview?.criticalCVEs || 0} CVEs
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="p-2 rounded-lg bg-orange-500/20 border border-orange-500/30 mr-3">
+                          <ShieldCheck className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">Active Exploits</h3>
+                          <p className="text-sm text-gray-500">CISA KEV Catalog</p>
+                        </div>
+                      </div>
+                      <p className="text-4xl font-bold text-orange-400 font-mono mb-2">
+                        {industryData.overview?.activellyExploited || 0}
+                      </p>
+                      <p className="text-sm text-gray-500">Known exploited vulnerabilities</p>
+                    </div>
+
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                      <div className="flex items-center mb-4">
+                        <div className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 mr-3">
+                          <Target className="w-5 h-5 text-cyan-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">AI-Specific Risks</h3>
+                          <p className="text-sm text-gray-500">LLM Vulnerabilities</p>
+                        </div>
+                      </div>
+                      <p className="text-4xl font-bold text-cyan-400 font-mono mb-2">10</p>
+                      <p className="text-sm text-gray-500">OWASP Top 10 for LLMs</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Threat Severity Distribution Chart */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">OWASP Threat Severity Distribution</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={feedsData.owasp.data}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis
+                        dataKey="rank"
+                        stroke="#666"
+                        fontSize={11}
+                        label={{ value: 'OWASP Rank', position: 'insideBottom', offset: -5, fill: '#666' }}
+                      />
+                      <YAxis stroke="#666" fontSize={12} hide />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1a1f2e',
+                          border: '1px solid #333',
+                          borderRadius: '8px'
+                        }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-gray-900 border border-gray-700 rounded-lg p-3">
+                                <p className="text-white font-semibold mb-1">{data.name}</p>
+                                <p className="text-sm text-gray-400 mb-1">{data.id}</p>
+                                <p className={`text-sm font-bold ${
+                                  data.severity === 'CRITICAL' ? 'text-red-400' :
+                                  data.severity === 'HIGH' ? 'text-orange-400' :
+                                  data.severity === 'MEDIUM' ? 'text-yellow-400' : 'text-green-400'
+                                }`}>{data.severity}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="rank" radius={[4, 4, 0, 0]}>
+                        {feedsData.owasp.data.map((entry, index) => {
+                          const color = entry.severity === 'CRITICAL' ? '#ff4757' :
+                                       entry.severity === 'HIGH' ? '#ffa502' :
+                                       entry.severity === 'MEDIUM' ? '#ffd93d' : '#6bcf7f';
+                          return <Cell key={`cell-${index}`} fill={color} />;
+                        })}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            ) : (
+              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-8 text-center">
+                <AlertTriangle className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                <p className="text-gray-500">No threat intelligence data available</p>
+              </div>
             )}
           </div>
         )}
