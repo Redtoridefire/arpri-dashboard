@@ -1,6 +1,6 @@
 /**
  * React Hooks for API Data Fetching
- * Provides hooks with loading, error, and refresh capabilities
+ * STABLE VERSION - Fixed infinite loop issues
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -8,6 +8,7 @@ import apiClient from './apiClient';
 
 /**
  * Generic hook for fetching data from API
+ * Fixed: Removed dependencies that cause infinite loops
  */
 export function useAPI(apiMethod, dependencies = [], options = {}) {
   const {
@@ -21,40 +22,65 @@ export function useAPI(apiMethod, dependencies = [], options = {}) {
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Use refs to avoid dependency issues
+  const apiMethodRef = useRef(apiMethod);
+  const onSuccessRef = useRef(onSuccess);
+  const onErrorRef = useRef(onError);
   const intervalRef = useRef(null);
 
+  // Update refs when props change
+  useEffect(() => {
+    apiMethodRef.current = apiMethod;
+    onSuccessRef.current = onSuccess;
+    onErrorRef.current = onError;
+  });
+
+  // Stable fetchData function (no dependencies)
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const result = await apiMethod();
+      const result = await apiMethodRef.current();
       setData(result);
       setLastUpdated(new Date());
 
-      if (onSuccess) onSuccess(result);
+      if (onSuccessRef.current) {
+        onSuccessRef.current(result);
+      }
     } catch (err) {
       console.error('API fetch error:', err);
       setError(err.message || 'Failed to fetch data');
 
-      if (onError) onError(err);
+      if (onErrorRef.current) {
+        onErrorRef.current(err);
+      }
     } finally {
       setLoading(false);
     }
-  }, [apiMethod, onSuccess, onError]);
+  }, []); // Empty dependencies - stable function
 
-  // Initial fetch
+  // Initial fetch - only run once on mount if autoFetch is true
   useEffect(() => {
     if (autoFetch) {
       fetchData();
     }
-  }, [autoFetch, fetchData, ...dependencies]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
-  // Auto-refresh
+  // Auto-refresh interval - disabled by default
   useEffect(() => {
     if (refreshInterval && refreshInterval > 0) {
-      intervalRef.current = setInterval(fetchData, refreshInterval);
-      return () => clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        fetchData();
+      }, refreshInterval);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
     }
   }, [refreshInterval, fetchData]);
 
@@ -101,7 +127,6 @@ export function useModels(refreshInterval = null) {
 
 /**
  * Hook for fetching fraud data
- * Note: Disabled auto-refresh by default to prevent performance issues
  */
 export function useFraud(refreshInterval = null) {
   return useAPI(
@@ -123,9 +148,9 @@ export function useCompliance(refreshInterval = null) {
 }
 
 /**
- * Hook for fetching system status
+ * Hook for fetching system status - DISABLED POLLING BY DEFAULT
  */
-export function useSystemStatus(refreshInterval = 10000) {
+export function useSystemStatus(refreshInterval = null) {
   return useAPI(
     () => apiClient.getAllSystem(),
     [],
@@ -134,9 +159,9 @@ export function useSystemStatus(refreshInterval = 10000) {
 }
 
 /**
- * Hook for fetching external feeds
+ * Hook for fetching external feeds - DISABLED POLLING BY DEFAULT
  */
-export function useExternalFeeds(refreshInterval = 30 * 60 * 1000) {
+export function useExternalFeeds(refreshInterval = null) {
   return useAPI(
     () => apiClient.getAllFeeds(),
     [],
@@ -156,9 +181,9 @@ export function useDashboard(refreshInterval = null) {
 }
 
 /**
- * Hook for polling real-time fraud metrics
+ * Hook for polling real-time fraud metrics - DISABLED BY DEFAULT
  */
-export function useFraudRealTime(pollingInterval = 5000) {
+export function useFraudRealTime(pollingInterval = null) {
   return useAPI(
     () => apiClient.getFraudRealTime(),
     [],
