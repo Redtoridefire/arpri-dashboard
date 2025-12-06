@@ -1227,7 +1227,7 @@ export default function ARPRIDashboard() {
             <SectionHeader
               icon={Rss}
               title="External Intelligence Feeds"
-              subtitle="Real-time threat intelligence from NIST NVD and CISA KEV"
+              subtitle="Real-time threat intelligence from NIST NVD, CISA KEV, GitHub, and OWASP"
               action={
                 <button
                   onClick={refreshFeeds}
@@ -1432,28 +1432,253 @@ export default function ARPRIDashboard() {
                   </div>
                 </div>
 
+                {/* GitHub Security Advisories */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="p-2 rounded-lg bg-purple-500/20 border border-purple-500/30 mr-3">
+                          <GitBranch className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">GitHub Security Advisories</h3>
+                          <p className="text-sm text-gray-500">High/Critical severity advisories from repository dependencies</p>
+                        </div>
+                      </div>
+                      <a
+                        href="https://github.com/advisories"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        github.com/advisories
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto">
+                    {feedsData?.github?.data?.length > 0 ? (
+                      <div className="divide-y divide-gray-800">
+                        {feedsData.github.data.map((advisory, index) => {
+                          const severityColors = {
+                            'CRITICAL': 'bg-red-500/20 text-red-400 border-red-500/50',
+                            'HIGH': 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+                            'MEDIUM': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+                            'LOW': 'bg-green-500/20 text-green-400 border-green-500/50'
+                          };
+
+                          return (
+                            <div key={index} className="p-4 hover:bg-white/5 transition-colors">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center">
+                                  <a
+                                    href={`https://github.com/advisories/${advisory.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                  >
+                                    {advisory.id}
+                                  </a>
+                                  {advisory.cveId && (
+                                    <span className="ml-2 px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-500">
+                                      {advisory.cveId}
+                                    </span>
+                                  )}
+                                  {advisory.source && (
+                                    <span className="ml-2 px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-500">
+                                      {advisory.source}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-medium border ${severityColors[advisory.severity] || severityColors['MEDIUM']}`}>
+                                  {advisory.severity}
+                                </span>
+                              </div>
+                              <p className="text-sm font-medium text-white mb-1">{advisory.summary}</p>
+                              <p className="text-sm text-gray-400 mb-2">{advisory.description}</p>
+                              <div className="flex items-center text-xs text-gray-600 space-x-4">
+                                <div className="flex items-center">
+                                  <Box className="w-3 h-3 mr-1" />
+                                  {advisory.ecosystem} / {advisory.package}
+                                </div>
+                                <div className="flex items-center">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  {new Date(advisory.published).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        No GitHub advisories available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* OWASP Top 10 for LLMs */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="p-2 rounded-lg bg-blue-500/20 border border-blue-500/30 mr-3">
+                          <ShieldCheck className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">OWASP Top 10 for LLMs</h3>
+                          <p className="text-sm text-gray-500">Critical AI/ML security risks from OWASP Foundation</p>
+                        </div>
+                      </div>
+                      <a
+                        href="https://owasp.org/www-project-top-10-for-large-language-model-applications/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-1" />
+                        owasp.org/llm-top-10
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="max-h-96 overflow-y-auto">
+                    {feedsData?.owasp?.data?.length > 0 ? (
+                      <div className="divide-y divide-gray-800">
+                        {feedsData.owasp.data.map((risk, index) => {
+                          const severityColors = {
+                            'CRITICAL': 'bg-red-500/20 text-red-400 border-red-500/50',
+                            'HIGH': 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+                            'MEDIUM': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+                            'LOW': 'bg-green-500/20 text-green-400 border-green-500/50'
+                          };
+
+                          return (
+                            <div key={index} className="p-4 hover:bg-white/5 transition-colors">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center">
+                                  <span className="text-2xl font-bold text-cyan-400 mr-3">#{risk.rank}</span>
+                                  <div>
+                                    <div className="flex items-center mb-1">
+                                      <span className="font-mono text-sm text-cyan-400 mr-2">{risk.id}</span>
+                                      <span className="font-semibold text-white">{risk.name}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-medium border ${severityColors[risk.severity]}`}>
+                                  {risk.severity}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-400 mb-2">{risk.description}</p>
+                              <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2 mb-2">
+                                <p className="text-xs text-blue-400">
+                                  <span className="font-semibold">Impact:</span> {risk.impact}
+                                </p>
+                              </div>
+                              <div className="bg-green-500/10 border border-green-500/30 rounded p-2 mb-2">
+                                <p className="text-xs text-green-400">
+                                  <span className="font-semibold">Mitigation:</span> {risk.mitigation}
+                                </p>
+                              </div>
+                              <div className="flex items-center text-xs text-gray-600">
+                                <span className="mr-2">CWE:</span>
+                                <span className="font-mono">{risk.cweId}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        No OWASP data available
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* CVE Statistics Dashboard */}
+                {feedsData?.statistics?.data && (
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                    <div className="flex items-center mb-6">
+                      <div className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 mr-3">
+                        <BarChart3 className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">CVE Industry Statistics</h3>
+                        <p className="text-sm text-gray-500">Real-time vulnerability trends from NVD</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-gray-500 text-sm">Total CVEs (Sample)</p>
+                        <p className="text-2xl font-bold text-white font-mono">{feedsData.statistics.data.statistics?.total || 0}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-gray-500 text-sm">Last 30 Days</p>
+                        <p className="text-2xl font-bold text-orange-400 font-mono">{feedsData.statistics.data.statistics?.recent30Days || 0}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-gray-500 text-sm">Avg CVSS Score</p>
+                        <p className="text-2xl font-bold text-yellow-400 font-mono">{feedsData.statistics.data.statistics?.avgCVSS || '0.0'}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-gray-500 text-sm">Critical</p>
+                        <p className="text-2xl font-bold text-red-400 font-mono">{feedsData.statistics.data.statistics?.bySeverity?.CRITICAL || 0}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-4 gap-2">
+                      {Object.entries(feedsData.statistics.data.statistics?.bySeverity || {}).map(([severity, count]) => {
+                        const colors = {
+                          'CRITICAL': 'bg-red-500',
+                          'HIGH': 'bg-orange-500',
+                          'MEDIUM': 'bg-yellow-500',
+                          'LOW': 'bg-green-500',
+                          'UNKNOWN': 'bg-gray-500'
+                        };
+                        return (
+                          <div key={severity} className="flex items-center">
+                            <div className={`w-3 h-3 rounded-full ${colors[severity]} mr-2`} />
+                            <span className="text-xs text-gray-400">{severity}: {count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Summary Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <MetricCard
                     title="NVD Vulnerabilities"
-                    value={feedsData?.nvd?.length || 0}
+                    value={feedsData?.nvd?.data?.length || 0}
                     subtitle="AI-related CVEs"
                     icon={AlertTriangle}
                     color="red"
                   />
                   <MetricCard
                     title="CISA KEV Catalog"
-                    value={feedsData?.cisa?.length || 0}
+                    value={feedsData?.cisa?.data?.length || 0}
                     subtitle="Actively exploited"
                     icon={ShieldCheck}
                     color="orange"
                   />
                   <MetricCard
+                    title="GitHub Advisories"
+                    value={feedsData?.github?.data?.length || 0}
+                    subtitle="Repository vulnerabilities"
+                    icon={GitBranch}
+                    color="purple"
+                  />
+                  <MetricCard
                     title="Feed Status"
-                    value={feedsData?.source === 'external' ? 'LIVE' : feedsData?.source === 'cache' ? 'CACHED' : 'FALLBACK'}
-                    subtitle={feedsData?.source === 'external' ? 'Real-time data' : feedsData?.source === 'cache' ? '< 30 min old' : 'Synthetic data'}
+                    value={feedsData?.metadata ? 'LIVE' : 'LOADING'}
+                    subtitle={feedsData?.metadata?.cacheDuration || 'Fetching data...'}
                     icon={Rss}
-                    color={feedsData?.source === 'external' ? 'green' : feedsData?.source === 'cache' ? 'orange' : 'purple'}
+                    color="green"
                   />
                 </div>
               </>
