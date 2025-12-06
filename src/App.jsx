@@ -579,11 +579,11 @@ export default function ARPRIDashboard() {
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
 
-  // Fetch data from APIs with auto-refresh
+  // Fetch data from APIs (polling disabled to prevent lag issues)
   const { data: resilienceData, loading: resilienceLoading, error: resilienceError, refresh: refreshResilience } = useResilience();
   const { data: threatData, loading: threatLoading, error: threatError, refresh: refreshThreats } = useThreats();
   const { data: modelData, loading: modelLoading, error: modelError, refresh: refreshModels } = useModels();
-  const { data: fraudData, loading: fraudLoading, error: fraudError } = useFraud(5000); // Poll every 5s
+  const { data: fraudData, loading: fraudLoading, error: fraudError } = useFraud(); // No auto-polling
   const { data: complianceData, loading: complianceLoading, error: complianceError, refresh: refreshCompliance } = useCompliance();
 
   // Extract data from API responses with fallbacks
