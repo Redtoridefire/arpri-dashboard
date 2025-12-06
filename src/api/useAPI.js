@@ -101,8 +101,9 @@ export function useModels(refreshInterval = null) {
 
 /**
  * Hook for fetching fraud data
+ * Note: Disabled auto-refresh by default to prevent performance issues
  */
-export function useFraud(refreshInterval = 5000) {
+export function useFraud(refreshInterval = null) {
   return useAPI(
     () => apiClient.getAllFraud(),
     [],
