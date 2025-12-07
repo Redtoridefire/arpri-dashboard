@@ -155,6 +155,49 @@ const agentKnowledge = {
   }
 };
 
+const securityControls = [
+  {
+    id: 'csp',
+    title: 'Content Security Policy (CSP)',
+    status: 'enabled',
+    owner: 'Platform',
+    description: 'Blocks inline scripts, malicious iframe embeds, and MITRE ATLAS prompt-injection pivots at the edge.',
+    frameworks: ['NIST SP 800-53 SC-5', 'OWASP ASVS 14.4'],
+    atlas: 'ATLAS: AML.T0027 (Prompt Injection)',
+    action: 'Review gateway CSP and disallow data/ftp/file sources'
+  },
+  {
+    id: 'secrets',
+    title: 'Secrets Vault Rotation',
+    status: 'in-progress',
+    owner: 'Security',
+    description: 'Short-lived credentials for model routing, embeddings, and DSPM connectors; audited via SIEM.',
+    frameworks: ['NIST AI RMF Govern 1.3', 'PCI DSS 4.0 (Req 3)'],
+    atlas: 'ATLAS: Supply Chain Hardening',
+    action: 'Enforce 90-day rotations with HSM-backed keys'
+  },
+  {
+    id: 'sbom',
+    title: 'SBOM & Dependency Signing',
+    status: 'enabled',
+    owner: 'Platform',
+    description: 'Artifact provenance for model containers, vector DBs, and inference runtimes with signed releases.',
+    frameworks: ['SLSA L3', 'NIST Secure Software Development'],
+    atlas: 'ATLAS: AML.T0011 (Data Poisoning) coverage',
+    action: 'Verify attestations before deploy and block unsigned images'
+  },
+  {
+    id: 'runtime',
+    title: 'Runtime Policy Guardrails',
+    status: 'planned',
+    owner: 'Platform',
+    description: 'Isolation boundaries for tools, egress controls, and AI action approvals with human-in-the-loop.',
+    frameworks: ['NIST AI RMF Manage 3.2', 'MITRE ATLAS detection engineering'],
+    atlas: 'ATLAS: Action Boundary Enforcement',
+    action: 'Enable per-tenant guardrails and egress allowlists'
+  }
+];
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -187,6 +230,18 @@ const formatNumber = (num) => {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
+};
+
+const sanitizeExternalUrl = (url, fallback = '#') => {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+    return fallback;
+  } catch (e) {
+    return fallback;
+  }
 };
 
 const getAtlasMapping = (item) => {
@@ -746,6 +801,19 @@ export default function ARPRIDashboard() {
     }
   };
 
+  const securityCoverage = useMemo(() => {
+    const total = securityControls.length;
+    const enabled = securityControls.filter(control => control.status === 'enabled').length;
+    const inProgress = securityControls.filter(control => control.status === 'in-progress').length;
+
+    return {
+      enabled,
+      inProgress,
+      total,
+      percentage: total ? Math.round((enabled / total) * 100) : 0
+    };
+  }, []);
+
   // Real-time fraud metrics
   const fraudMetrics = fraudData?.realtime || {
     transactionsPerSecond: 0,
@@ -1069,7 +1137,7 @@ export default function ARPRIDashboard() {
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <a
-                      href={overviewMetricDetails[selectedMetric]?.link}
+                      href={sanitizeExternalUrl(overviewMetricDetails[selectedMetric]?.link)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-cyan-300 flex items-center"
@@ -1247,6 +1315,110 @@ export default function ARPRIDashboard() {
                   </ResponsiveContainer>
                 </div>
                 )}
+              </div>
+            </div>
+            
+            {/* Security Hardening & Governance */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="col-span-2 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                <SectionHeader
+                  icon={Lock}
+                  title="Security Hardening"
+                  subtitle="Zero Trust guardrails, supply chain controls, and runtime containment"
+                />
+
+                <div className="mt-4 space-y-4">
+                  {securityControls.map(control => {
+                    const statusColor = {
+                      enabled: 'bg-green-500/20 text-green-300 border-green-500/40',
+                      'in-progress': 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+                      planned: 'bg-gray-700/50 text-gray-300 border-gray-700'
+                    }[control.status] || 'bg-gray-800 text-gray-300 border-gray-800';
+
+                    return (
+                      <div key={control.id} className="border border-gray-800 rounded-xl p-4 bg-black/30">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-sm text-gray-400">Owner: {control.owner}</p>
+                            <h4 className="text-lg font-semibold text-white">{control.title}</h4>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${statusColor}`}>
+                            {control.status.replace('-', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-3">{control.description}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-cyan-200 mb-3">
+                          {control.frameworks.map((framework, idx) => (
+                            <span key={idx} className="px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/30">
+                              {framework}
+                            </span>
+                          ))}
+                          <span className="px-2 py-1 rounded bg-purple-500/10 border border-purple-500/30 text-purple-200">
+                            {control.atlas}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center">
+                            <ShieldCheck className="w-4 h-4 text-cyan-400 mr-2" />
+                            <span>{control.action}</span>
+                          </div>
+                          <span className="text-[11px] text-gray-500">Mapped to ATLAS/NIST for audits</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                <SectionHeader
+                  icon={ShieldCheck}
+                  title="Posture Summary"
+                  subtitle="Operational security signals"
+                />
+
+                <div className="mt-4 space-y-4">
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-gray-300">Guardrails enabled</p>
+                      <span className="font-mono text-cyan-300 text-sm">{securityCoverage.percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-500 to-green-500"
+                        style={{ width: `${securityCoverage.percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {securityCoverage.enabled} enabled · {securityCoverage.inProgress} in progress · {securityCoverage.total} total controls
+                    </p>
+                  </div>
+
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-white flex items-center">
+                      <Lock className="w-4 h-4 mr-2 text-cyan-400" />
+                      Defensive Playbook
+                    </h4>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Egress allowlists and DNS sinkholes for tool calls to block data exfiltration
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Prompt/jailbreak detection mapped to MITRE ATLAS AML.T0027 with SOC handoff
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Signed SBOMs and provenance checks for models, embeddings, and vector indexes
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Runtime audit logging + anomaly detection tied to NIST AI RMF Govern/Manage
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1785,7 +1957,10 @@ export default function ARPRIDashboard() {
                         <p className="text-xs text-gray-500 mb-2">Reference & Mapping</p>
                         <p className="text-sm text-gray-300 mb-2">{frameworkResources[selectedFramework.framework]?.summary || 'Use this framework to align AI controls with sector obligations and map findings to audits.'}</p>
                         <a
-                          href={frameworkResources[selectedFramework.framework]?.url || frameworkResources['NIST AI RMF'].url}
+                          href={sanitizeExternalUrl(
+                            frameworkResources[selectedFramework.framework]?.url ||
+                            frameworkResources['NIST AI RMF'].url
+                          )}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center text-cyan-300 text-sm hover:text-cyan-200"
@@ -2275,12 +2450,12 @@ export default function ARPRIDashboard() {
                             <div key={index} className="p-4 hover:bg-white/5 transition-colors">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center">
-                                  <a
-                                    href={`https://nvd.nist.gov/vuln/detail/${cve.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cve.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {cve.id}
                                   </a>
                                   {cve.source && (
@@ -2348,12 +2523,12 @@ export default function ARPRIDashboard() {
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
                                 <div className="flex items-center mb-1">
-                                  <a
-                                    href={`https://nvd.nist.gov/vuln/detail/${vuln.cveID}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(vuln.cveID || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {vuln.cveID}
                                   </a>
                                   {vuln.source && (
@@ -2431,12 +2606,12 @@ export default function ARPRIDashboard() {
                             <div key={index} className="p-4 hover:bg-white/5 transition-colors">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center">
-                                  <a
-                                    href={`https://github.com/advisories/${advisory.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://github.com/advisories/${encodeURIComponent(advisory.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {advisory.id}
                                   </a>
                                   {advisory.cveId && (
@@ -2577,12 +2752,12 @@ export default function ARPRIDashboard() {
                             <p className="text-sm text-cyan-300 font-semibold">{item.title}</p>
                             <p className="text-xs text-gray-500">{item.source} • {item.time}</p>
                           </div>
-                          <a
-                            href={item.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-cyan-400 flex items-center"
-                          >
+                            <a
+                              href={sanitizeExternalUrl(item.link)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-cyan-400 flex items-center"
+                            >
                             <ExternalLink className="w-3 h-3 mr-1" /> View
                           </a>
                         </div>
