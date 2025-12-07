@@ -597,8 +597,12 @@ export default function ARPRIDashboard() {
   const riskDistribution = resilienceData?.distribution || [];
 
   const threatVectors = threatData?.threats || [];
-  const complianceFrameworks = complianceData?.status || [];
-  const aiModelInventory = modelData?.models || [];
+  const complianceFrameworks = complianceData?.frameworks || [];
+  const complianceSummary = complianceData?.summary || {};
+  const complianceCategories = complianceData?.categories || [];
+  const aiVulnerabilities = modelData?.vulnerabilities || [];
+  const vulnerabilityCategories = modelData?.categories || [];
+  const vulnerabilitySummary = modelData?.summary || {};
 
   // Real-time fraud metrics
   const fraudMetrics = fraudData?.realtime || {
@@ -629,8 +633,8 @@ export default function ARPRIDashboard() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'threats', label: 'Threat Intel', icon: AlertTriangle },
-    { id: 'compliance', label: 'Compliance', icon: ShieldCheck },
-    { id: 'models', label: 'AI Models', icon: Cpu },
+    { id: 'compliance', label: 'Frameworks', icon: ShieldCheck },
+    { id: 'models', label: 'AI Vulnerabilities', icon: AlertTriangle },
     { id: 'feeds', label: 'Intel Feeds', icon: Rss },
     { id: 'architecture', label: 'Architecture', icon: Layers },
     { id: 'whitepaper', label: 'Whitepaper', icon: BookOpen }
@@ -1125,9 +1129,63 @@ export default function ARPRIDashboard() {
           <div className="space-y-6">
             <SectionHeader
               icon={ShieldCheck}
-              title="Compliance Posture"
-              subtitle="Regulatory framework alignment and coverage"
+              title="Compliance Framework Tracker"
+              subtitle="AI governance, regulatory compliance, and security standards monitoring"
+              action={
+                <button
+                  onClick={refreshCompliance}
+                  disabled={complianceLoading}
+                  className="flex items-center px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/30 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${complianceLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              }
             />
+
+            {/* Summary Stats */}
+            {!complianceLoading && !complianceError && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Total Frameworks</span>
+                    <ShieldCheck className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-white">{complianceSummary.totalFrameworks || 0}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {complianceSummary.activeFrameworks || 0} active, {complianceSummary.inProgressFrameworks || 0} in progress
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 border border-green-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Controls Implemented</span>
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-green-400">{complianceSummary.implementedControls || 0}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    of {complianceSummary.totalControls || 0} total ({complianceSummary.controlsPercentage || 0}%)
+                  </div>
+                </div>
+                <div className="bg-gray-900/50 border border-cyan-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Average Coverage</span>
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-cyan-400">{complianceSummary.averageCoverage || 0}%</div>
+                  <div className="text-xs text-gray-500 mt-1">Across all frameworks</div>
+                </div>
+                <div className="bg-gray-900/50 border border-orange-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Total Findings</span>
+                    <AlertTriangle className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-orange-400">{complianceSummary.totalFindings || 0}</div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {complianceSummary.criticalFrameworks || 0} critical frameworks
+                  </div>
+                </div>
+              </div>
+            )}
 
             {complianceLoading ? (
               <LoadingSkeleton className="h-96 w-full" />
@@ -1135,75 +1193,128 @@ export default function ARPRIDashboard() {
               <ErrorDisplay message={complianceError} onRetry={refreshCompliance} />
             ) : (
               <>
-                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-800 bg-black/30">
-                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Framework</th>
-                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Status</th>
-                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Coverage</th>
-                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Last Audit</th>
-                        <th className="text-left py-4 px-4 text-gray-400 font-medium text-sm">Findings</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {complianceFrameworks.map((item, index) => (
-                        <tr key={index} className="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="text-white font-medium">{item.framework}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              item.status === 'compliant' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-                            }`}>
-                              {item.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center">
-                              <div className="w-24 h-2 bg-gray-800 rounded-full overflow-hidden mr-2">
+                {/* Framework Cards */}
+                <div className="space-y-4">
+                  {complianceFrameworks.map((framework, index) => {
+                    const priorityColors = {
+                      critical: { border: 'border-red-500/50', bg: 'bg-red-500/5', badge: 'bg-red-500/20 text-red-400' },
+                      high: { border: 'border-orange-500/50', bg: 'bg-orange-500/5', badge: 'bg-orange-500/20 text-orange-400' },
+                      medium: { border: 'border-yellow-500/50', bg: 'bg-yellow-500/5', badge: 'bg-yellow-500/20 text-yellow-400' }
+                    };
+                    const colors = priorityColors[framework.priority] || priorityColors.medium;
+                    const statusColors = {
+                      active: 'bg-green-500/20 text-green-400',
+                      'in-progress': 'bg-blue-500/20 text-blue-400',
+                      pending: 'bg-gray-500/20 text-gray-400'
+                    };
+
+                    return (
+                      <div
+                        key={index}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-2">
+                              <ShieldCheck className="w-5 h-5 text-cyan-400 mr-2" />
+                              <h3 className="text-lg font-semibold text-white">{framework.framework}</h3>
+                              <span className={`ml-3 px-2 py-1 rounded text-xs font-semibold uppercase ${colors.badge}`}>
+                                {framework.priority}
+                              </span>
+                              <span className={`ml-2 px-2 py-1 rounded text-xs font-semibold uppercase ${statusColors[framework.status]}`}>
+                                {framework.status}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-4 mb-2">
+                              <span className="px-3 py-1 rounded-lg text-xs bg-purple-500/20 text-purple-300">
+                                {framework.category}
+                              </span>
+                              <span className="text-sm text-gray-400">{framework.description}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Control Implementation</div>
+                            <div className="flex items-center mb-1">
+                              <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden mr-2">
                                 <div
-                                  className="h-full rounded-full transition-all duration-500"
-                                  style={{ width: `${item.coverage}%`, backgroundColor: getScoreColor(item.coverage) }}
+                                  className="h-full rounded-full bg-cyan-500 transition-all duration-500"
+                                  style={{ width: `${framework.progress}%` }}
                                 />
                               </div>
-                              <span className="text-gray-400 font-mono text-sm">{item.coverage}%</span>
+                              <span className="text-sm font-mono text-cyan-400">{framework.progress}%</span>
                             </div>
-                          </td>
-                          <td className="py-3 px-4 text-gray-500 text-sm">{item.lastAudit}</td>
-                          <td className="py-3 px-4">
-                            <span className={`font-mono ${item.findings > 0 ? 'text-orange-400' : 'text-green-400'}`}>
-                              {item.findings}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            <div className="text-xs text-gray-600">
+                              {framework.implementedControls} of {framework.totalControls} controls
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Coverage</div>
+                            <div className="flex items-center mb-1">
+                              <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden mr-2">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${framework.coverage}%`, backgroundColor: getScoreColor(framework.coverage) }}
+                                />
+                              </div>
+                              <span className="text-sm font-mono text-white">{framework.coverage}%</span>
+                            </div>
+                            <div className="text-xs text-gray-600">Framework compliance</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Findings</div>
+                            <div className="flex items-center space-x-2 mb-1">
+                              <span className={`text-xl font-bold ${framework.findings > 0 ? 'text-orange-400' : 'text-green-400'}`}>
+                                {framework.findings}
+                              </span>
+                              <span className="text-sm text-gray-500">open issues</span>
+                            </div>
+                            <div className="text-xs text-gray-600">Owner: {framework.owner}</div>
+                          </div>
+                        </div>
+
+                        <div className="mb-4">
+                          <div className="text-xs text-gray-500 mb-2">Key Requirements:</div>
+                          <div className="flex flex-wrap gap-2">
+                            {framework.keyRequirements?.map((req, idx) => (
+                              <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-300">
+                                {req}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>Last Audit: {framework.lastAudit}</span>
+                            <span>Next Audit: {framework.nextAudit} ({framework.daysUntilAudit} days)</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <MetricCard
-                    title="Average Coverage"
-                    value="94%"
-                    subtitle="Across all frameworks"
-                    icon={CheckCircle}
-                    color="green"
-                  />
-                  <MetricCard
-                    title="Next Audit"
-                    value="Feb 15"
-                    subtitle="GDPR/CCPA Assessment"
-                    icon={Clock}
-                    color="orange"
-                  />
-                  <MetricCard
-                    title="Open Findings"
-                    value="13"
-                    subtitle="5 critical, 8 medium"
-                    icon={AlertCircle}
-                    color="red"
-                  />
+                {/* Category Breakdown Chart */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Coverage by Category</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={complianceCategories} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis type="number" stroke="#666" domain={[0, 100]} />
+                      <YAxis type="category" dataKey="category" stroke="#666" width={150} fontSize={11} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1a1f2e',
+                          border: '1px solid #333',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar dataKey="coverage" fill="#06b6d4" name="Coverage %" />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </>
             )}
@@ -1214,13 +1325,57 @@ export default function ARPRIDashboard() {
         {activeTab === 'models' && (
           <div className="space-y-6">
             <SectionHeader
-              icon={Cpu}
-              title="AI Model Inventory"
-              subtitle="Production models and risk classification"
+              icon={AlertTriangle}
+              title="AI Vulnerability Database"
+              subtitle="OWASP Top 10 for LLM, CVEs, and AI/ML security threats"
+              action={
+                <button
+                  onClick={refreshModels}
+                  disabled={modelLoading}
+                  className="flex items-center px-3 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-sm text-cyan-400 hover:bg-cyan-500/30 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${modelLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              }
             />
 
+            {/* Summary Stats */}
+            {!modelLoading && !modelError && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Total Vulnerabilities</span>
+                    <Shield className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-white">{vulnerabilitySummary.total || 0}</div>
+                </div>
+                <div className="bg-gray-900/50 border border-red-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Critical</span>
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-red-400">{vulnerabilitySummary.critical || 0}</div>
+                </div>
+                <div className="bg-gray-900/50 border border-orange-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">High Severity</span>
+                    <AlertTriangle className="w-5 h-5 text-orange-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-orange-400">{vulnerabilitySummary.high || 0}</div>
+                </div>
+                <div className="bg-gray-900/50 border border-yellow-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-500 text-sm">Exploitable</span>
+                    <Activity className="w-5 h-5 text-yellow-400" />
+                  </div>
+                  <div className="text-2xl font-bold text-yellow-400">{vulnerabilitySummary.exploitable || 0}</div>
+                </div>
+              </div>
+            )}
+
             {modelLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {[...Array(6)].map((_, i) => (
                   <LoadingCard key={i} />
                 ))}
@@ -1228,102 +1383,115 @@ export default function ARPRIDashboard() {
             ) : modelError ? (
               <ErrorDisplay message={modelError} onRetry={refreshModels} />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {aiModelInventory.map((model, index) => {
-                const tierColors = {
-                  critical: 'border-red-500/50 bg-red-500/10',
-                  high: 'border-orange-500/50 bg-orange-500/10',
-                  medium: 'border-yellow-500/50 bg-yellow-500/10',
-                  low: 'border-green-500/50 bg-green-500/10'
-                };
+              <>
+                {/* Vulnerability Cards */}
+                <div className="space-y-4">
+                  {aiVulnerabilities.map((vuln, index) => {
+                    const severityColors = {
+                      critical: { border: 'border-red-500/50', bg: 'bg-red-500/10', text: 'text-red-400', badge: 'bg-red-500/20' },
+                      high: { border: 'border-orange-500/50', bg: 'bg-orange-500/10', text: 'text-orange-400', badge: 'bg-orange-500/20' },
+                      medium: { border: 'border-yellow-500/50', bg: 'bg-yellow-500/10', text: 'text-yellow-400', badge: 'bg-yellow-500/20' },
+                      low: { border: 'border-green-500/50', bg: 'bg-green-500/10', text: 'text-green-400', badge: 'bg-green-500/20' }
+                    };
+                    const colors = severityColors[vuln.severity] || severityColors.medium;
 
-                return (
-                  <div 
-                    key={index} 
-                    onClick={() => setSelectedModel(model)}
-                    className={`rounded-lg border ${tierColors[model.riskTier]} p-4 transition-all hover:scale-[1.01] cursor-pointer`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center">
-                        <Cpu className="w-5 h-5 text-cyan-400 mr-2" />
-                        <span className="text-white font-semibold">{model.name}</span>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        model.status === 'production' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        {model.status}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-gray-500">Type:</span>
-                        <span className="text-gray-300 ml-2">{model.type}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Risk:</span>
-                        <span className="text-gray-300 ml-2 capitalize">{model.riskTier}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Drift:</span>
-                        <span className={`ml-2 ${model.driftScore > 3 ? 'text-orange-400' : 'text-green-400'}`}>
-                          {model.driftScore}%
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500">Accuracy:</span>
-                        <span className="text-gray-300 ml-2">{model.accuracy}%</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            )}
+                    return (
+                      <div
+                        key={index}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center mb-2">
+                              <AlertTriangle className={`w-5 h-5 ${colors.text} mr-2`} />
+                              <h3 className="text-lg font-semibold text-white">{vuln.title}</h3>
+                              {vuln.exploitAvailable && (
+                                <span className="ml-2 px-2 py-1 rounded text-xs bg-red-500/30 text-red-300 border border-red-500/50">
+                                  Exploit Available
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4 mb-3">
+                              <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${colors.badge} ${colors.text} uppercase`}>
+                                {vuln.severity}
+                              </span>
+                              <span className="px-3 py-1 rounded-lg text-xs bg-gray-800 text-gray-300">
+                                CVSS: {vuln.cvss}
+                              </span>
+                              <span className="px-3 py-1 rounded-lg text-xs bg-purple-500/20 text-purple-300">
+                                {vuln.category}
+                              </span>
+                              <span className="text-xs text-gray-500">{vuln.id}</span>
+                            </div>
+                          </div>
+                        </div>
 
-            {!modelLoading && !modelError && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Model Drift Monitoring</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={aiModelInventory} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis type="number" stroke="#666" domain={[0, 5]} />
-                    <YAxis type="category" dataKey="name" stroke="#666" width={100} fontSize={11} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1a1f2e', 
-                        border: '1px solid #333',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="driftScore" fill="#00ffc8" radius={[0, 4, 4, 0]}>
-                      {aiModelInventory.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.driftScore > 3 ? '#ffa502' : '#00ffc8'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                        <p className="text-gray-300 mb-4">{vuln.description}</p>
 
-              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">Latency Distribution (ms)</h3>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={aiModelInventory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                    <XAxis dataKey="name" stroke="#666" fontSize={10} angle={-20} textAnchor="end" height={60} />
-                    <YAxis stroke="#666" />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: '#1a1f2e', 
-                        border: '1px solid #333',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Bar dataKey="latency" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Affected Systems:</div>
+                            <div className="flex flex-wrap gap-2">
+                              {vuln.affectedSystems?.map((sys, idx) => (
+                                <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-cyan-300">
+                                  {sys}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-gray-500 mb-2">Patches/Mitigations:</div>
+                            <p className="text-sm text-gray-400">{vuln.patches}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-800">
+                          <div className="flex items-center space-x-4">
+                            <span className="text-xs text-gray-500">
+                              Discovered: {vuln.discovered}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Last Updated: {vuln.lastUpdated}
+                            </span>
+                          </div>
+                          {vuln.references && vuln.references.length > 0 && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">References:</span>
+                              {vuln.references.slice(0, 2).map((ref, idx) => (
+                                <span key={idx} className="text-xs text-cyan-400 font-mono">
+                                  {ref}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Category Statistics */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                  <h3 className="text-lg font-semibold text-white mb-4">Vulnerabilities by Category</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={vulnerabilityCategories} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis type="number" stroke="#666" />
+                      <YAxis type="category" dataKey="category" stroke="#666" width={150} fontSize={11} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#1a1f2e',
+                          border: '1px solid #333',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Bar dataKey="critical" stackId="a" fill="#ef4444" name="Critical" />
+                      <Bar dataKey="high" stackId="a" fill="#f97316" name="High" />
+                      <Bar dataKey="medium" stackId="a" fill="#eab308" name="Medium" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
             )}
           </div>
         )}
