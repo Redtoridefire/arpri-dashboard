@@ -749,6 +749,7 @@ export default function ARPRIDashboard() {
   const [frameworkPriorityFilter, setFrameworkPriorityFilter] = useState('all');
   const [frameworkCategoryFilter, setFrameworkCategoryFilter] = useState('all');
   const [frameworkStatusFilter, setFrameworkStatusFilter] = useState('all');
+  const [selectedCveStat, setSelectedCveStat] = useState(null);
 
   // Filter states for Threat Intel
   const [threatSearchTerm, setThreatSearchTerm] = useState('');
@@ -797,6 +798,33 @@ export default function ARPRIDashboard() {
     'AI-Specific CVEs': {
       description: 'Issues affecting models, vector stores, and AI dependencies.',
       mapping: 'MITRE ATLAS emerging techniques for LLM and ML systems.',
+      link: 'https://atlas.mitre.org'
+    }
+  };
+
+  const cveStatisticDetails = {
+    total: {
+      title: 'Total CVEs (Sample)',
+      description: 'Live tally derived from the NVD feed; helps scope patch capacity and dependency exposure.',
+      frameworks: ['MITRE ATLAS exploit coverage', 'NIST AI RMF Manage 3.2'],
+      link: 'https://nvd.nist.gov'
+    },
+    recent30Days: {
+      title: 'Last 30 Days',
+      description: 'Fresh vulnerabilities observed in the last month that should feed sprint-level remediation backlogs.',
+      frameworks: ['CISA KEV prioritization', 'NIST AI RMF Measure 2.6'],
+      link: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog'
+    },
+    avgCVSS: {
+      title: 'Avg CVSS Score',
+      description: 'Mean CVSS score across the live feed to anchor risk thresholds and SLA definitions.',
+      frameworks: ['FIRST CVSS v3.1', 'NIST AI RMF Govern 1.3'],
+      link: 'https://www.first.org/cvss/'
+    },
+    critical: {
+      title: 'Critical CVEs',
+      description: 'Highest-severity items to align with emergency playbooks and ATLAS-driven detections.',
+      frameworks: ['MITRE ATLAS exploit hardening', 'NIST AI RMF Manage 3.2'],
       link: 'https://atlas.mitre.org'
     }
   };
@@ -867,6 +895,42 @@ export default function ARPRIDashboard() {
 
     return matchesSearch && matchesSeverity && matchesCategory;
   }), [owaspThreats, threatCategoryFilter, threatSearchTerm, threatSeverityFilter]);
+
+  const cveStats = useMemo(() => {
+    const nvdFeed = feedsData?.nvd || [];
+    const statistics = feedsData?.statistics?.data?.statistics || {};
+
+    const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentFromNvd = nvdFeed.filter(cve => cve?.published && new Date(cve.published).getTime() >= recentThreshold).length;
+
+    const severityBuckets = nvdFeed.reduce((acc, cve) => {
+      const severity = (cve?.severity || 'UNKNOWN').toUpperCase();
+      acc[severity] = (acc[severity] || 0) + 1;
+      return acc;
+    }, {});
+
+    const scores = nvdFeed
+      .map(cve => Number(cve?.score))
+      .filter(score => Number.isFinite(score));
+
+    const averageFromNvd = scores.length ? (scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
+
+    const bySeverity = Object.keys(severityBuckets).length
+      ? severityBuckets
+      : (statistics.bySeverity || {});
+
+    const topCVEs = [...nvdFeed]
+      .sort((a, b) => (Number(b?.score) || 0) - (Number(a?.score) || 0))
+      .slice(0, 5);
+
+    return {
+      total: statistics.total ?? nvdFeed.length,
+      recent30Days: statistics.recent30Days ?? recentFromNvd,
+      avgCVSS: statistics.avgCVSS ?? (averageFromNvd ? averageFromNvd.toFixed(1) : '0.0'),
+      bySeverity,
+      topCVEs
+    };
+  }, [feedsData]);
 
   const handleExport = () => {
     const exportData = {
@@ -2773,7 +2837,7 @@ export default function ARPRIDashboard() {
                 </div>
 
                 {/* CVE Statistics Dashboard */}
-                {feedsData?.statistics?.data && (
+                {(cveStats?.total || Object.keys(cveStats?.bySeverity || {}).length > 0) && (
                   <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                     <div className="flex items-center mb-6">
                       <div className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 mr-3">
@@ -2786,26 +2850,46 @@ export default function ARPRIDashboard() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('total')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Total CVEs (Sample)</p>
-                        <p className="text-2xl font-bold text-white font-mono">{feedsData.statistics.data.statistics?.total || 0}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-white font-mono">{cveStats.total || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Click for ATLAS/NIST mapping</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('recent30Days')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Last 30 Days</p>
-                        <p className="text-2xl font-bold text-orange-400 font-mono">{feedsData.statistics.data.statistics?.recent30Days || 0}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-orange-400 font-mono">{cveStats.recent30Days || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Highlights freshness and sprint risk</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('avgCVSS')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Avg CVSS Score</p>
-                        <p className="text-2xl font-bold text-yellow-400 font-mono">{feedsData.statistics.data.statistics?.avgCVSS || '0.0'}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-yellow-400 font-mono">{cveStats.avgCVSS || '0.0'}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Guides remediation SLAs</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('critical')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Critical</p>
-                        <p className="text-2xl font-bold text-red-400 font-mono">{feedsData.statistics.data.statistics?.bySeverity?.CRITICAL || 0}</p>
-                      </div>
+                        <p className="text-2xl font-bold text-red-400 font-mono">{cveStats.bySeverity?.CRITICAL || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Escalate to emergency playbooks</p>
+                      </button>
                     </div>
 
                     <div className="mt-4 grid grid-cols-4 gap-2">
-                      {Object.entries(feedsData.statistics.data.statistics?.bySeverity || {}).map(([severity, count]) => {
+                      {Object.entries(cveStats.bySeverity || {}).map(([severity, count]) => {
                         const colors = {
                           'CRITICAL': 'bg-red-500',
                           'HIGH': 'bg-orange-500',
@@ -2815,13 +2899,112 @@ export default function ARPRIDashboard() {
                         };
                         return (
                           <div key={severity} className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full ${colors[severity]} mr-2`} />
+                            <div className={`w-3 h-3 rounded-full ${colors[severity] || 'bg-gray-500'} mr-2`} />
                             <span className="text-xs text-gray-400">{severity}: {count}</span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
+                )}
+
+                {selectedCveStat && (
+                  <Modal
+                    title={cveStatisticDetails[selectedCveStat]?.title || 'CVE Drilldown'}
+                    onClose={() => setSelectedCveStat(null)}
+                  >
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-300">{cveStatisticDetails[selectedCveStat]?.description}</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Total CVEs</p>
+                          <p className="text-xl font-bold text-white font-mono">{cveStats.total || 0}</p>
+                        </div>
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
+                          <p className="text-xl font-bold text-orange-400 font-mono">{cveStats.recent30Days || 0}</p>
+                        </div>
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Avg CVSS</p>
+                          <p className="text-xl font-bold text-yellow-400 font-mono">{cveStats.avgCVSS || '0.0'}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 mb-3">Severity distribution (live)</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {Object.entries(cveStats.bySeverity || {}).map(([severity, count]) => (
+                            <div key={severity} className="flex items-center justify-between text-sm text-gray-300">
+                              <div className="flex items-center">
+                                <span className={`w-2 h-2 rounded-full mr-2 ${
+                                  severity === 'CRITICAL' ? 'bg-red-500' :
+                                  severity === 'HIGH' ? 'bg-orange-500' :
+                                  severity === 'MEDIUM' ? 'bg-yellow-500' :
+                                  severity === 'LOW' ? 'bg-green-500' :
+                                  'bg-gray-500'
+                                }`} />
+                                {severity}
+                              </div>
+                              <span className="font-mono text-white">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-gray-500">Top CVEs by score (live feed)</p>
+                          <a
+                            href={sanitizeExternalUrl(cveStatisticDetails[selectedCveStat]?.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-300 flex items-center"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" /> Source reference
+                          </a>
+                        </div>
+                        {cveStats.topCVEs.length > 0 ? (
+                          <div className="space-y-3">
+                            {cveStats.topCVEs.map((cve, idx) => (
+                              <div key={idx} className="p-3 rounded border border-gray-800 bg-gray-900/50">
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="flex items-center space-x-2">
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cve.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-300"
+                                    >
+                                      {cve.id}
+                                    </a>
+                                    <span className="text-xs text-gray-500">{new Date(cve.published).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-1 rounded text-[11px] font-semibold uppercase ${getRiskBadgeColor(cve.severity || 'MEDIUM')}`}>
+                                      {cve.severity || 'MEDIUM'}
+                                    </span>
+                                    <span className="font-mono text-sm text-white">{Number(cve.score)?.toFixed?.(1) || 'N/A'}</span>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-400 leading-relaxed">{cve.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No CVE feed entries available for drilldown.</p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {cveStatisticDetails[selectedCveStat]?.frameworks?.map((framework, idx) => (
+                          <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-cyan-300 border border-gray-700">
+                            {framework}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Modal>
                 )}
 
                 {/* Summary Stats */}
