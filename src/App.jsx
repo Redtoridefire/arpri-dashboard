@@ -1610,7 +1610,7 @@ export default function ARPRIDashboard() {
                 </div>
 
                 {/* Industry Threat Statistics */}
-                {industryData && (
+                {industryData && owaspThreats.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                       <div className="flex items-center mb-4">
@@ -1623,10 +1623,10 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                       <p className="text-4xl font-bold text-red-400 font-mono mb-2">
-                        {(feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length || 0) + (industryData.overview?.criticalCVEs || 0)}
+                        {(owaspThreats.filter(t => t.severity === 'CRITICAL').length || 0) + (industryData?.overview?.criticalCVEs || 0)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length} OWASP + {industryData.overview?.criticalCVEs || 0} CVEs
+                        {owaspThreats.filter(t => t.severity === 'CRITICAL').length} OWASP + {industryData?.overview?.criticalCVEs || 0} CVEs
                       </p>
                     </div>
 
@@ -1641,7 +1641,7 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                       <p className="text-4xl font-bold text-orange-400 font-mono mb-2">
-                        {industryData.overview?.activellyExploited || 0}
+                        {industryData?.overview?.activellyExploited || 0}
                       </p>
                       <p className="text-sm text-gray-500">Known exploited vulnerabilities</p>
                     </div>
