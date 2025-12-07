@@ -252,6 +252,8 @@ const getAtlasMapping = (item) => {
   return 'Mapped to MITRE ATLAS library of adversarial ML techniques';
 };
 
+const toArray = (value) => (Array.isArray(value) ? value : []);
+
 // ============================================================================
 // COMPONENTS
 // ============================================================================
@@ -767,16 +769,16 @@ export default function ARPRIDashboard() {
 
   // Extract data from API responses with fallbacks
   const resilienceScore = resilienceData?.score || {};
-  const timeSeriesData = resilienceData?.timeseries || [];
-  const radarData = resilienceData?.radar || [];
-  const riskDistribution = resilienceData?.distribution || [];
+  const timeSeriesData = toArray(resilienceData?.timeseries);
+  const radarData = toArray(resilienceData?.radar);
+  const riskDistribution = toArray(resilienceData?.distribution);
 
-  const threatVectors = threatData?.threats || [];
-  const complianceFrameworks = complianceData?.frameworks || [];
+  const threatVectors = toArray(threatData?.threats);
+  const complianceFrameworks = toArray(complianceData?.frameworks);
   const complianceSummary = complianceData?.summary || {};
-  const complianceCategories = complianceData?.categories || [];
-  const aiVulnerabilities = modelData?.vulnerabilities || [];
-  const vulnerabilityCategories = modelData?.categories || [];
+  const complianceCategories = toArray(complianceData?.categories);
+  const aiVulnerabilities = toArray(modelData?.vulnerabilities);
+  const vulnerabilityCategories = toArray(modelData?.categories);
   const vulnerabilitySummary = modelData?.summary || {};
 
   const overviewMetricDetails = {
@@ -882,7 +884,7 @@ export default function ARPRIDashboard() {
   }), [complianceFrameworks, frameworkCategoryFilter, frameworkPriorityFilter, frameworkSearchTerm, frameworkStatusFilter]);
 
   // Filtered data for Threats (OWASP)
-  const owaspThreats = feedsData?.owasp?.data || [];
+  const owaspThreats = toArray(feedsData?.owasp?.data);
   const filteredThreats = useMemo(() => owaspThreats.filter(threat => {
     const matchesSearch = threatSearchTerm === '' ||
       threat.name.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
@@ -897,7 +899,7 @@ export default function ARPRIDashboard() {
   }), [owaspThreats, threatCategoryFilter, threatSearchTerm, threatSeverityFilter]);
 
   const cveStats = useMemo(() => {
-    const nvdFeed = feedsData?.nvd || [];
+    const nvdFeed = toArray(feedsData?.nvd);
     const statistics = feedsData?.statistics?.data?.statistics || {};
 
     const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
