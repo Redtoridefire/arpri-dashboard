@@ -39,6 +39,77 @@ const architectureLayers = [
   { id: 'security', name: 'Security Fabric', components: ['Zero Trust', 'SIEM', 'SOAR'], color: '#ff4757' }
 ];
 
+const frameworkResources = {
+  'NIST AI RMF': {
+    url: 'https://www.nist.gov/itl/ai-risk-management-framework',
+    summary: 'Govern, Map, Measure, and Manage the lifecycle of AI risk with concrete controls for explainability, robustness, and accountability.'
+  },
+  'MITRE ATLAS': {
+    url: 'https://atlas.mitre.org/',
+    summary: 'Adversary tactics and techniques for machine learning systems mapped to concrete detections and mitigations.'
+  },
+  'OWASP Top 10 for LLM': {
+    url: 'https://owasp.org/www-project-top-10-for-large-language-model-applications/',
+    summary: 'Community curated list of the most common LLM application weaknesses with recommended remediations.'
+  },
+  'NIST SP 800-207': {
+    url: 'https://csrc.nist.gov/publications/detail/sp/800-207/final',
+    summary: 'Zero Trust Architecture principles for identity-first security and continuous verification.'
+  }
+};
+
+const architectureInsights = {
+  presentation: {
+    title: 'Presentation Layer',
+    details: 'Edge hardening for APIs, TLS termination, bot defense, and session security. Ideal for WAF policy tuning and anomaly detection.',
+    bestPractices: ['mTLS between gateway and services', 'Runtime API threat detection', 'Rate limiting per tenant', 'Security headers and CSP']
+  },
+  orchestration: {
+    title: 'AI Orchestration',
+    details: 'Model routing, registry governance, and guardrails that enforce safety policies before and after inference.',
+    bestPractices: ['Model version pinning', 'Guardrail policies per use-case', 'Isolation for tool execution', 'Strong audit logging']
+  },
+  inference: {
+    title: 'Inference Layer',
+    details: 'LLM and ML serving surfaces that need isolation, GPU access control, and content moderation.',
+    bestPractices: ['Dedicated service accounts per model', 'Prompt and output filtering', 'Runtime jailbreak detection', 'GPU telemetry baselines']
+  },
+  data: {
+    title: 'Data Layer',
+    details: 'Token vaults, vector stores, and DSPM controls to keep sensitive training and inference data locked down.',
+    bestPractices: ['Attribute-based access control', 'Field-level encryption', 'Secrets rotation and vaulting', 'Data lineage and retention policies']
+  },
+  security: {
+    title: 'Security Fabric',
+    details: 'Zero Trust controls, SIEM/SOAR automation, and policy enforcement that stitches the stack together.',
+    bestPractices: ['Continuous verification', 'Playbooks for AI-specific alerts', 'Centralized detections mapped to MITRE ATLAS', 'Least privilege service meshes']
+  }
+};
+
+const securityNews = [
+  {
+    title: 'MITRE updates ATLAS with new prompt-injection mitigations',
+    source: 'MITRE',
+    link: 'https://atlas.mitre.org/news',
+    summary: 'Latest Atlas techniques now include jailbreak protections and sandboxing detections for LLM-enabled apps.',
+    time: '2h ago'
+  },
+  {
+    title: 'NIST AI RMF adds sector-specific guidance for payments',
+    source: 'NIST',
+    link: 'https://www.nist.gov/itl/ai-risk-management-framework',
+    summary: 'New implementation profiles outline data minimization and tokenization best practices for regulated workloads.',
+    time: '6h ago'
+  },
+  {
+    title: 'CISA publishes alert on adversarial ML against fraud models',
+    source: 'CISA',
+    link: 'https://www.cisa.gov/news-events/alerts',
+    summary: 'Guidance highlights monitoring for drift, shadow models, and rapid rollback when adversarial inputs are detected.',
+    time: 'Today'
+  }
+];
+
 // AI Agent knowledge base
 const agentKnowledge = {
   'prompt injection': {
@@ -104,6 +175,14 @@ const formatNumber = (num) => {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
+};
+
+const getAtlasMapping = (item) => {
+  const title = item?.title?.toLowerCase() || item?.id?.toLowerCase() || '';
+  if (title.includes('prompt')) return 'MITRE ATLAS: AML.T0027 (Prompt Injection)';
+  if (title.includes('data poisoning') || title.includes('poison')) return 'MITRE ATLAS: AML.T0011 (Data Poisoning)';
+  if (title.includes('model theft') || title.includes('exfiltration')) return 'MITRE ATLAS: AML.T0004 (Model Exfiltration)';
+  return 'Mapped to MITRE ATLAS library of adversarial ML techniques';
 };
 
 // ============================================================================
@@ -580,6 +659,10 @@ export default function ARPRIDashboard() {
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedVulnerability, setSelectedVulnerability] = useState(null);
+  const [selectedFramework, setSelectedFramework] = useState(null);
+  const [selectedLayer, setSelectedLayer] = useState(architectureInsights.presentation);
+  const [selectedMetric, setSelectedMetric] = useState(null);
 
   // Filter states for AI Vulnerabilities
   const [vulnSearchTerm, setVulnSearchTerm] = useState('');
@@ -620,6 +703,29 @@ export default function ARPRIDashboard() {
   const aiVulnerabilities = modelData?.vulnerabilities || [];
   const vulnerabilityCategories = modelData?.categories || [];
   const vulnerabilitySummary = modelData?.summary || {};
+
+  const overviewMetricDetails = {
+    'Critical CVEs': {
+      description: 'Snapshot of severe vulnerabilities impacting AI supply chain components. Drill down to align patching to NIST AI RMF Manage (3.2).',
+      mapping: 'MITRE ATLAS coverage for dependency exploits.',
+      link: 'https://nvd.nist.gov/vuln'
+    },
+    'Actively Exploited': {
+      description: 'Signals from CISA KEV to prioritize hotfixes and compensating controls.',
+      mapping: 'Map detections to MITRE ATT&CK / ATLAS for incident response playbooks.',
+      link: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog'
+    },
+    'Avg CVSS Score': {
+      description: 'Baseline severity across observed vulnerabilities. Use to benchmark risk appetite and SLAs.',
+      mapping: 'Supports NIST AI RMF Measure (2.6) risk quantification.',
+      link: 'https://www.first.org/cvss/'
+    },
+    'AI-Specific CVEs': {
+      description: 'Issues affecting models, vector stores, and AI dependencies.',
+      mapping: 'MITRE ATLAS emerging techniques for LLM and ML systems.',
+      link: 'https://atlas.mitre.org'
+    }
+  };
 
   // Real-time fraud metrics
   const fraudMetrics = fraudData?.realtime || {
@@ -899,6 +1005,7 @@ export default function ARPRIDashboard() {
                   trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
                   trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
                   color="red"
+                  onClick={() => setSelectedMetric('Critical CVEs')}
                 />
                 <MetricCard
                   title="Actively Exploited"
@@ -908,6 +1015,7 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue="Real-time from CISA"
                   color="orange"
+                  onClick={() => setSelectedMetric('Actively Exploited')}
                 />
                 <MetricCard
                   title="Avg CVSS Score"
@@ -917,6 +1025,7 @@ export default function ARPRIDashboard() {
                   trend="stable"
                   trendValue="NVD calculated"
                   color="yellow"
+                  onClick={() => setSelectedMetric('Avg CVSS Score')}
                 />
                 <MetricCard
                   title="AI-Specific CVEs"
@@ -926,8 +1035,33 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
                   color="purple"
+                  onClick={() => setSelectedMetric('AI-Specific CVEs')}
                 />
               </div>
+            )}
+
+            {selectedMetric && (
+              <Modal title={selectedMetric} onClose={() => setSelectedMetric(null)}>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-300">{overviewMetricDetails[selectedMetric]?.description}</p>
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                    <p className="text-sm text-cyan-300">{overviewMetricDetails[selectedMetric]?.mapping}</p>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <a
+                      href={overviewMetricDetails[selectedMetric]?.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-300 flex items-center"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Open source link
+                    </a>
+                    <span className="text-[11px] text-gray-500">Dive deeper into this metric</span>
+                  </div>
+                </div>
+              </Modal>
             )}
 
             {/* Resilience Scores + Trend Chart */}
@@ -1521,7 +1655,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedFramework(framework)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer`}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -1601,12 +1736,57 @@ export default function ARPRIDashboard() {
                             <span>Last Audit: {framework.lastAudit}</span>
                             <span>Next Audit: {framework.nextAudit} ({framework.daysUntilAudit} days)</span>
                           </div>
+                          <span className="text-[11px] text-cyan-300 flex items-center">
+                            <ExternalLink className="w-3 h-3 mr-1" /> Click to expand
+                          </span>
                         </div>
                       </div>
                     );
                   })
                   )}
                 </div>
+
+                {selectedFramework && (
+                  <Modal title={selectedFramework.framework} onClose={() => setSelectedFramework(null)}>
+                    <div className="space-y-4">
+                      <p className="text-gray-300 text-sm">{selectedFramework.description}</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Alignment</p>
+                          <p className="text-sm text-gray-200">Priority: {selectedFramework.priority?.toUpperCase()}</p>
+                          <p className="text-sm text-gray-200">Status: {selectedFramework.status}</p>
+                          <p className="text-xs text-gray-500 mt-1">Coverage: {selectedFramework.coverage}%</p>
+                        </div>
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Key Controls</p>
+                          <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+                            {(selectedFramework.keyRequirements || []).map((req, idx) => (
+                              <li key={idx}>{req}</li>
+                            ))}
+                            {selectedFramework.keyRequirements?.length === 0 && (
+                              <li>Map this framework to data protection, access control, and incident response runbooks.</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Reference & Mapping</p>
+                        <p className="text-sm text-gray-300 mb-2">{frameworkResources[selectedFramework.framework]?.summary || 'Use this framework to align AI controls with sector obligations and map findings to audits.'}</p>
+                        <a
+                          href={frameworkResources[selectedFramework.framework]?.url || frameworkResources['NIST AI RMF'].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-cyan-300 text-sm hover:text-cyan-200"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          {frameworkResources[selectedFramework.framework]?.url || 'Open NIST AI RMF'}
+                        </a>
+                      </div>
+                    </div>
+                  </Modal>
+                )}
 
                 {/* Category Breakdown Chart */}
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
@@ -1854,22 +2034,75 @@ export default function ARPRIDashboard() {
                               Last Updated: {vuln.lastUpdated}
                             </span>
                           </div>
-                          {vuln.references && vuln.references.length > 0 && (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">References:</span>
-                              {vuln.references.slice(0, 2).map((ref, idx) => (
-                                <span key={idx} className="text-xs text-cyan-400 font-mono">
-                                  {ref}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-3">
+                            <span className="text-xs text-cyan-400 font-mono">{getAtlasMapping(vuln)}</span>
+                            <span className="px-2 py-1 rounded text-[11px] bg-gray-800 text-gray-300">Click to drill down</span>
+                          </div>
                         </div>
                       </div>
                     );
                   })
                   )}
                 </div>
+
+                {selectedVulnerability && (
+                  <Modal title={selectedVulnerability.title} onClose={() => setSelectedVulnerability(null)}>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${getRiskBadgeColor(selectedVulnerability.severity?.toUpperCase?.() || selectedVulnerability.severity || 'MEDIUM')}`}>
+                          {selectedVulnerability.severity}
+                        </span>
+                        <span className="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-300">
+                          {selectedVulnerability.category}
+                        </span>
+                        <span className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-300">CVSS {selectedVulnerability.cvss}</span>
+                      </div>
+
+                      <p className="text-gray-300 text-sm leading-relaxed">{selectedVulnerability.description}</p>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-1">MITRE ATLAS Mapping</p>
+                        <p className="text-sm text-cyan-300">{getAtlasMapping(selectedVulnerability)}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Impacted Assets</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedVulnerability.affectedSystems || ['Inference API', 'Vector store', 'Model registry']).map((sys, idx) => (
+                              <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-200">{sys}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">NIST AI RMF</p>
+                          <p className="text-sm text-gray-300">Govern 1.3, Map 1.5, Measure 2.6, Manage 3.2</p>
+                          <p className="text-xs text-gray-500 mt-1">Align mitigations to risk lifecycle activities.</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Recommended Actions</p>
+                        <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+                          <li>Enable guardrails and output filters for unsafe generations.</li>
+                          <li>Instrument runtime detections and send signals to SIEM/SOAR.</li>
+                          <li>Validate training and inference inputs for adversarial content.</li>
+                        </ul>
+                      </div>
+
+                      {selectedVulnerability.references && selectedVulnerability.references.length > 0 && (
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">References</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedVulnerability.references.map((ref, idx) => (
+                              <span key={idx} className="text-xs text-cyan-400 font-mono">{ref}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Modal>
+                )}
 
                 {/* Category Statistics */}
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
@@ -2274,6 +2507,46 @@ export default function ARPRIDashboard() {
                   </div>
                 </div>
 
+                {/* Curated Security News */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Rss className="w-5 h-5 text-cyan-400 mr-2" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">AI Security Newswire</h3>
+                        <p className="text-sm text-gray-500">Latest headlines mapped to MITRE ATLAS and NIST AI RMF</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500">Updated continuously</span>
+                  </div>
+                  <div className="divide-y divide-gray-800">
+                    {securityNews.map((item, idx) => (
+                      <div key={idx} className="p-4 hover:bg-white/5 transition-colors">
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <p className="text-sm text-cyan-300 font-semibold">{item.title}</p>
+                            <p className="text-xs text-gray-500">{item.source} • {item.time}</p>
+                          </div>
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-400 flex items-center"
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" /> View
+                          </a>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-2">{item.summary}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-cyan-200">
+                          <span className="px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/30">MITRE ATLAS</span>
+                          <span className="px-2 py-1 rounded bg-green-500/10 border border-green-500/30">NIST AI RMF</span>
+                          <span className="px-2 py-1 rounded bg-purple-500/10 border border-purple-500/30">Threat intel</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* CVE Statistics Dashboard */}
                 {feedsData?.statistics?.data && (
                   <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
@@ -2370,6 +2643,59 @@ export default function ARPRIDashboard() {
               title="Security Architecture"
               subtitle="AI-native payments security stack"
             />
+
+            {/* Layer drill-down */}
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1 flex items-center">
+                    <Target className="w-5 h-5 text-cyan-400 mr-2" />
+                    Clickable stack overview
+                  </h3>
+                  <p className="text-sm text-gray-400">Select a layer to review why it matters and what to harden.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+                {architectureLayers.map((layer) => (
+                  <button
+                    key={layer.id}
+                    onClick={() => setSelectedLayer(architectureInsights[layer.id])}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 ${
+                      selectedLayer?.title === architectureInsights[layer.id].title
+                        ? 'border-cyan-500/60 bg-cyan-500/10 shadow'
+                        : 'border-gray-800 hover:border-cyan-500/40 hover:bg-white/5'
+                    }`}
+                    style={{ boxShadow: selectedLayer?.title === architectureInsights[layer.id].title ? `0 0 10px ${layer.color}` : 'none' }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-semibold text-sm">{layer.name}</span>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: layer.color }} />
+                    </div>
+                    <p className="text-xs text-gray-400">{architectureInsights[layer.id].details}</p>
+                  </button>
+                ))}
+              </div>
+
+              {selectedLayer && (
+                <div className="bg-black/30 border border-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Importance</p>
+                      <p className="text-lg text-white font-semibold">{selectedLayer.title}</p>
+                    </div>
+                    <span className="text-xs text-cyan-300">Mapped to MITRE ATLAS & NIST AI RMF</span>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-3">{selectedLayer.details}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLayer.bestPractices.map((practice, idx) => (
+                      <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-200 border border-gray-700">
+                        {practice}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Interactive Security Stack */}
             <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
