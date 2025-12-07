@@ -660,15 +660,17 @@ export default function ARPRIDashboard() {
     return matchesSearch && matchesPriority && matchesCategory && matchesStatus;
   });
 
-  // Filtered data for Threats
-  const filteredThreats = threatVectors.filter(threat => {
+  // Filtered data for Threats (OWASP)
+  const owaspThreats = feedsData?.owasp?.data || [];
+  const filteredThreats = owaspThreats.filter(threat => {
     const matchesSearch = threatSearchTerm === '' ||
       threat.name.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
       threat.description.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
-      threat.mitigation.toLowerCase().includes(threatSearchTerm.toLowerCase());
+      (threat.mitigation && threat.mitigation.toLowerCase().includes(threatSearchTerm.toLowerCase()));
 
     const matchesSeverity = threatSeverityFilter === 'all' || threat.severity === threatSeverityFilter;
-    const matchesCategory = threatCategoryFilter === 'all' || threat.category === threatCategoryFilter;
+    const matchesCategory = threatCategoryFilter === 'all' ||
+      (threat.category && threat.category === threatCategoryFilter);
 
     return matchesSearch && matchesSeverity && matchesCategory;
   });
@@ -1037,8 +1039,67 @@ export default function ARPRIDashboard() {
                     </a>
                   </div>
 
+                  {/* Filter Controls */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Search */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Search</label>
+                        <input
+                          type="text"
+                          value={threatSearchTerm}
+                          onChange={(e) => setThreatSearchTerm(e.target.value)}
+                          placeholder="Search threats..."
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      {/* Severity Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Severity</label>
+                        <select
+                          value={threatSeverityFilter}
+                          onChange={(e) => setThreatSeverityFilter(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                        >
+                          <option value="all">All Severities</option>
+                          <option value="CRITICAL">Critical</option>
+                          <option value="HIGH">High</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="LOW">Low</option>
+                        </select>
+                      </div>
+
+                      {/* Category Filter - Placeholder for future use */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Results</label>
+                        <div className="flex items-center h-10 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
+                          <span className="text-sm text-gray-400">
+                            Showing {filteredThreats.length} of {owaspThreats.length}
+                          </span>
+                          {(threatSearchTerm || threatSeverityFilter !== 'all') && (
+                            <button
+                              onClick={() => {
+                                setThreatSearchTerm('');
+                                setThreatSeverityFilter('all');
+                              }}
+                              className="ml-auto text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {feedsData.owasp.data.map((threat, index) => {
+                    {filteredThreats.length === 0 ? (
+                      <div className="col-span-full bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
+                        <p className="text-gray-400">No threats match your filters</p>
+                      </div>
+                    ) : (
+                      filteredThreats.map((threat, index) => {
                       const severityColors = {
                         'CRITICAL': 'border-red-500/50 bg-red-500/10',
                         'HIGH': 'border-orange-500/50 bg-orange-500/10',
@@ -1069,7 +1130,8 @@ export default function ARPRIDashboard() {
                           </div>
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
 
