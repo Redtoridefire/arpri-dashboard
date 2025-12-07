@@ -676,20 +676,114 @@ export default function ARPRIDashboard() {
   });
 
   const handleExport = () => {
-    const data = {
-      exportDate: new Date().toISOString(),
-      resilience: resilienceData,
-      threats: threatData,
-      compliance: complianceData,
-      models: modelData,
-      fraud: fraudData
+    const exportData = {
+      // Export Metadata
+      metadata: {
+        exportDate: new Date().toISOString(),
+        exportVersion: '3.0',
+        dashboardName: 'ARPRI AI Risk & Payment Risk Intelligence Dashboard',
+        generatedBy: 'ARPRI Dashboard v3.0',
+        dataTimestamp: new Date().toISOString()
+      },
+
+      // Executive Summary
+      executiveSummary: {
+        totalVulnerabilities: vulnerabilitySummary.total || 0,
+        criticalVulnerabilities: vulnerabilitySummary.critical || 0,
+        exploitableVulnerabilities: vulnerabilitySummary.exploitable || 0,
+        totalFrameworks: complianceSummary.totalFrameworks || 0,
+        activeFrameworks: complianceSummary.activeFrameworks || 0,
+        averageCompliance: complianceSummary.averageCoverage || 0,
+        totalControls: complianceSummary.totalControls || 0,
+        implementedControls: complianceSummary.implementedControls || 0,
+        totalFindings: complianceSummary.totalFindings || 0,
+        resilienceScore: resilienceScore.overall || 0,
+        fraudMetrics: {
+          transactionsPerSecond: fraudMetrics.transactionsPerSecond,
+          fraudAttempts: fraudMetrics.fraudAttempts,
+          blockedRate: fraudMetrics.blockedRate
+        }
+      },
+
+      // Filtered Data (if filters are active)
+      filters: {
+        vulnerabilities: {
+          applied: vulnSearchTerm || vulnSeverityFilter !== 'all' || vulnCategoryFilter !== 'all' || vulnExploitFilter !== 'all',
+          searchTerm: vulnSearchTerm,
+          severity: vulnSeverityFilter,
+          category: vulnCategoryFilter,
+          exploit: vulnExploitFilter,
+          resultsCount: filteredVulnerabilities.length,
+          totalCount: aiVulnerabilities.length
+        },
+        frameworks: {
+          applied: frameworkSearchTerm || frameworkPriorityFilter !== 'all' || frameworkCategoryFilter !== 'all' || frameworkStatusFilter !== 'all',
+          searchTerm: frameworkSearchTerm,
+          priority: frameworkPriorityFilter,
+          category: frameworkCategoryFilter,
+          status: frameworkStatusFilter,
+          resultsCount: filteredFrameworks.length,
+          totalCount: complianceFrameworks.length
+        },
+        threats: {
+          applied: threatSearchTerm || threatSeverityFilter !== 'all',
+          searchTerm: threatSearchTerm,
+          severity: threatSeverityFilter,
+          resultsCount: filteredThreats.length,
+          totalCount: owaspThreats.length
+        }
+      },
+
+      // Detailed Data
+      aiVulnerabilities: {
+        summary: vulnerabilitySummary,
+        categories: vulnerabilityCategories,
+        vulnerabilities: filteredVulnerabilities.length > 0 ? filteredVulnerabilities : aiVulnerabilities,
+        filterApplied: filteredVulnerabilities.length !== aiVulnerabilities.length
+      },
+
+      complianceFrameworks: {
+        summary: complianceSummary,
+        categories: complianceCategories,
+        frameworks: filteredFrameworks.length > 0 ? filteredFrameworks : complianceFrameworks,
+        filterApplied: filteredFrameworks.length !== complianceFrameworks.length
+      },
+
+      threatIntelligence: {
+        source: 'OWASP Top 10 for LLM + NIST NVD',
+        threats: filteredThreats.length > 0 ? filteredThreats : owaspThreats,
+        filterApplied: filteredThreats.length !== owaspThreats.length,
+        industryMetrics: industryData?.overview || {}
+      },
+
+      resilienceMetrics: {
+        score: resilienceScore,
+        timeseries: timeSeriesData,
+        radar: radarData,
+        distribution: riskDistribution
+      },
+
+      fraudDetection: fraudData,
+
+      externalFeeds: {
+        nvd: feedsData?.nvd || [],
+        cisa: feedsData?.cisa || [],
+        mitre: feedsData?.mitre || [],
+        github: feedsData?.github || []
+      }
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `arpri-export-${new Date().toISOString().split('T')[0]}.json`;
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filterSuffix = (filteredVulnerabilities.length !== aiVulnerabilities.length ||
+                         filteredFrameworks.length !== complianceFrameworks.length ||
+                         filteredThreats.length !== owaspThreats.length) ? '-filtered' : '';
+    a.download = `arpri-dashboard-export-${timestamp}${filterSuffix}.json`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const tabs = [
