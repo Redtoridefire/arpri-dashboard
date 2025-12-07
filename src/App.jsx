@@ -62,27 +62,32 @@ const architectureInsights = {
   presentation: {
     title: 'Presentation Layer',
     details: 'Edge hardening for APIs, TLS termination, bot defense, and session security. Ideal for WAF policy tuning and anomaly detection.',
-    bestPractices: ['mTLS between gateway and services', 'Runtime API threat detection', 'Rate limiting per tenant', 'Security headers and CSP']
+    bestPractices: ['mTLS between gateway and services', 'Runtime API threat detection', 'Rate limiting per tenant', 'Security headers and CSP'],
+    frameworks: ['NIST SP 800-207 Zero Trust ingress controls', 'MITRE ATLAS ingress filtering + bot defense techniques']
   },
   orchestration: {
     title: 'AI Orchestration',
     details: 'Model routing, registry governance, and guardrails that enforce safety policies before and after inference.',
-    bestPractices: ['Model version pinning', 'Guardrail policies per use-case', 'Isolation for tool execution', 'Strong audit logging']
+    bestPractices: ['Model version pinning', 'Guardrail policies per use-case', 'Isolation for tool execution', 'Strong audit logging'],
+    frameworks: ['NIST AI RMF Govern/Map for model registries', 'MITRE ATLAS mitigations for tool-use containment']
   },
   inference: {
     title: 'Inference Layer',
     details: 'LLM and ML serving surfaces that need isolation, GPU access control, and content moderation.',
-    bestPractices: ['Dedicated service accounts per model', 'Prompt and output filtering', 'Runtime jailbreak detection', 'GPU telemetry baselines']
+    bestPractices: ['Dedicated service accounts per model', 'Prompt and output filtering', 'Runtime jailbreak detection', 'GPU telemetry baselines'],
+    frameworks: ['MITRE ATLAS AML.T0027 prompt injection detections', 'NIST AI RMF Measure/Manage for drift + safety tests']
   },
   data: {
     title: 'Data Layer',
     details: 'Token vaults, vector stores, and DSPM controls to keep sensitive training and inference data locked down.',
-    bestPractices: ['Attribute-based access control', 'Field-level encryption', 'Secrets rotation and vaulting', 'Data lineage and retention policies']
+    bestPractices: ['Attribute-based access control', 'Field-level encryption', 'Secrets rotation and vaulting', 'Data lineage and retention policies'],
+    frameworks: ['NIST AI RMF Map for data classification', 'PCI DSS / DSPM controls for training corpora']
   },
   security: {
     title: 'Security Fabric',
     details: 'Zero Trust controls, SIEM/SOAR automation, and policy enforcement that stitches the stack together.',
-    bestPractices: ['Continuous verification', 'Playbooks for AI-specific alerts', 'Centralized detections mapped to MITRE ATLAS', 'Least privilege service meshes']
+    bestPractices: ['Continuous verification', 'Playbooks for AI-specific alerts', 'Centralized detections mapped to MITRE ATLAS', 'Least privilege service meshes'],
+    frameworks: ['MITRE ATLAS detection engineering for AI', 'NIST AI RMF Manage incident response for AI systems']
   }
 };
 
@@ -606,6 +611,13 @@ const DrillDownModal = ({ isOpen, onClose, title, children }) => {
     </div>
   );
 };
+
+// Lightweight Modal wrapper used by metric/framework/vulnerability drilldowns
+const Modal = ({ title, onClose, children }) => (
+  <DrillDownModal isOpen={true} onClose={onClose} title={title}>
+    {children}
+  </DrillDownModal>
+);
 
 // Threat Detail Component
 const ThreatDetail = ({ threat }) => (
@@ -1978,7 +1990,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedVulnerability(vuln)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer`}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
@@ -2074,11 +2087,50 @@ export default function ARPRIDashboard() {
                             ))}
                           </div>
                         </div>
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">NIST AI RMF</p>
+                        <p className="text-sm text-gray-300">Govern 1.3, Map 1.5, Measure 2.6, Manage 3.2</p>
+                        <p className="text-xs text-gray-500 mt-1">Align mitigations to risk lifecycle activities.</p>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Mitigations & Remediation</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-gray-300">
+                          {(selectedVulnerability.mitigations || [
+                            'Harden prompts and apply allow/deny guardrails for inputs and outputs.',
+                            'Enable anomaly detection mapped to MITRE ATLAS adversarial ML techniques.',
+                            'Patch affected dependencies and validate SBOM provenance.',
+                            'Add runtime policy blocks with human-in-the-loop approvals for risky actions.'
+                          ]).map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
-                          <p className="text-xs text-gray-500 mb-2">NIST AI RMF</p>
-                          <p className="text-sm text-gray-300">Govern 1.3, Map 1.5, Measure 2.6, Manage 3.2</p>
-                          <p className="text-xs text-gray-500 mt-1">Align mitigations to risk lifecycle activities.</p>
+                          <p className="text-xs text-gray-500 mb-2">Framework Tie-ins</p>
+                          <ul className="space-y-1 text-sm text-gray-300">
+                            {(selectedVulnerability.frameworks || [
+                              'MITRE ATLAS detection+mitigation playbooks',
+                              'NIST AI RMF Manage (3.2) containment and rollback',
+                              'OWASP LLM Top 10 controls for AI misuse'
+                            ]).map((fw, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5" />
+                                <span>{fw}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">MITRE/NIST Action Mapping</p>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <p className="text-cyan-300">{getAtlasMapping(selectedVulnerability)}</p>
+                            <p className="text-gray-400">Connect detections and mitigations to the ATLAS technique above and NIST AI RMF lifecycle steps for incident playbooks.</p>
+                          </div>
+                        </div>
+                      </div>
                       </div>
 
                       <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
@@ -2693,6 +2745,19 @@ export default function ARPRIDashboard() {
                       </span>
                     ))}
                   </div>
+                  {selectedLayer.frameworks && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Framework alignment</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {selectedLayer.frameworks.map((framework, idx) => (
+                          <div key={idx} className="flex items-start space-x-2 bg-gray-800/40 border border-gray-800 rounded-lg p-2">
+                            <ExternalLink className="w-4 h-4 text-cyan-400 mt-0.5" />
+                            <span className="text-sm text-gray-200">{framework}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
