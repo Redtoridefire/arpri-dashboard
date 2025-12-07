@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, RadarChart, Radar,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
@@ -13,8 +13,8 @@ import {
   GitBranch, Box, Workflow, FileText, Settings, Info, ExternalLink,
   Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen, Loader, Rss
 } from 'lucide-react';
-import WhitepaperTab from './WhitepaperTab';
-import InteractiveArchitecture from './InteractiveArchitecture';
+const WhitepaperTab = lazy(() => import('./WhitepaperTab'));
+const InteractiveArchitecture = lazy(() => import('./InteractiveArchitecture'));
 import {
   useResilience,
   useThreats,
@@ -174,6 +174,13 @@ const getRiskBadgeColor = (risk) => {
     'LOW': 'bg-blue-500/20 text-blue-400 border-blue-500/50'
   };
   return colors[risk] || colors['MEDIUM'];
+};
+
+const THREAT_SEVERITY_COLORS = {
+  'CRITICAL': 'border-red-500/50 bg-red-500/10',
+  'HIGH': 'border-orange-500/50 bg-orange-500/10',
+  'MEDIUM': 'border-yellow-500/50 bg-yellow-500/10',
+  'LOW': 'border-green-500/50 bg-green-500/10'
 };
 
 const formatNumber = (num) => {
@@ -749,7 +756,7 @@ export default function ARPRIDashboard() {
   };
 
   // Filtered data for AI Vulnerabilities
-  const filteredVulnerabilities = aiVulnerabilities.filter(vuln => {
+  const filteredVulnerabilities = useMemo(() => aiVulnerabilities.filter(vuln => {
     const matchesSearch = vulnSearchTerm === '' ||
       vuln.title.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
       vuln.description.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
@@ -762,10 +769,10 @@ export default function ARPRIDashboard() {
       (vulnExploitFilter === 'no' && !vuln.exploitAvailable);
 
     return matchesSearch && matchesSeverity && matchesCategory && matchesExploit;
-  });
+  }), [aiVulnerabilities, vulnCategoryFilter, vulnExploitFilter, vulnSearchTerm, vulnSeverityFilter]);
 
   // Filtered data for Compliance Frameworks
-  const filteredFrameworks = complianceFrameworks.filter(framework => {
+  const filteredFrameworks = useMemo(() => complianceFrameworks.filter(framework => {
     const matchesSearch = frameworkSearchTerm === '' ||
       framework.framework.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
       framework.description.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
@@ -776,11 +783,11 @@ export default function ARPRIDashboard() {
     const matchesStatus = frameworkStatusFilter === 'all' || framework.status === frameworkStatusFilter;
 
     return matchesSearch && matchesPriority && matchesCategory && matchesStatus;
-  });
+  }), [complianceFrameworks, frameworkCategoryFilter, frameworkPriorityFilter, frameworkSearchTerm, frameworkStatusFilter]);
 
   // Filtered data for Threats (OWASP)
   const owaspThreats = feedsData?.owasp?.data || [];
-  const filteredThreats = owaspThreats.filter(threat => {
+  const filteredThreats = useMemo(() => owaspThreats.filter(threat => {
     const matchesSearch = threatSearchTerm === '' ||
       threat.name.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
       threat.description.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
@@ -791,7 +798,7 @@ export default function ARPRIDashboard() {
       (threat.category && threat.category === threatCategoryFilter);
 
     return matchesSearch && matchesSeverity && matchesCategory;
-  });
+  }), [owaspThreats, threatCategoryFilter, threatSearchTerm, threatSeverityFilter]);
 
   const handleExport = () => {
     const exportData = {
@@ -1339,19 +1346,11 @@ export default function ARPRIDashboard() {
                         <p className="text-gray-400">No threats match your filters</p>
                       </div>
                     ) : (
-                      filteredThreats.map((threat, index) => {
-                      const severityColors = {
-                        'CRITICAL': 'border-red-500/50 bg-red-500/10',
-                        'HIGH': 'border-orange-500/50 bg-orange-500/10',
-                        'MEDIUM': 'border-yellow-500/50 bg-yellow-500/10',
-                        'LOW': 'border-green-500/50 bg-green-500/10'
-                      };
-
-                      return (
+                      filteredThreats.map((threat, index) => (
                         <div
                           key={index}
                           onClick={() => setSelectedThreat(threat)}
-                          className={`rounded-lg border ${severityColors[threat.severity]} p-4 hover:scale-[1.02] transition-all cursor-pointer`}
+                          className={`rounded-lg border ${THREAT_SEVERITY_COLORS[threat.severity]} p-4 hover:scale-[1.02] transition-all cursor-pointer`}
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center">
@@ -1369,8 +1368,7 @@ export default function ARPRIDashboard() {
                             <span>{threat.cweId}</span>
                           </div>
                         </div>
-                      );
-                    })
+                      ))
                     )}
                   </div>
                 </div>
@@ -2771,7 +2769,9 @@ export default function ARPRIDashboard() {
               <p className="text-gray-400 text-sm mb-4">
                 Click and drag to explore • Zoom with scroll • Pan with mouse
               </p>
-              <InteractiveArchitecture type="security-stack" />
+              <Suspense fallback={<LoadingCard />}>
+                <InteractiveArchitecture type="security-stack" />
+              </Suspense>
             </div>
 
             {/* Interactive Transaction Flow */}
@@ -2783,7 +2783,9 @@ export default function ARPRIDashboard() {
               <p className="text-gray-400 text-sm mb-4">
                 Animated data flows showing real-time transaction processing
               </p>
-              <InteractiveArchitecture type="transaction-flow" />
+              <Suspense fallback={<LoadingCard />}>
+                <InteractiveArchitecture type="transaction-flow" />
+              </Suspense>
             </div>
 
             {/* Zero Trust + DSPM Grid */}
@@ -2844,7 +2846,11 @@ export default function ARPRIDashboard() {
         )}
 
         {/* Whitepaper Tab */}
-        {activeTab === 'whitepaper' && <WhitepaperTab />}
+        {activeTab === 'whitepaper' && (
+          <Suspense fallback={<LoadingCard />}>
+            <WhitepaperTab />
+          </Suspense>
+        )}
       </main>
 
       {/* Footer */}
