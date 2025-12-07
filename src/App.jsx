@@ -581,6 +581,23 @@ export default function ARPRIDashboard() {
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
 
+  // Filter states for AI Vulnerabilities
+  const [vulnSearchTerm, setVulnSearchTerm] = useState('');
+  const [vulnSeverityFilter, setVulnSeverityFilter] = useState('all');
+  const [vulnCategoryFilter, setVulnCategoryFilter] = useState('all');
+  const [vulnExploitFilter, setVulnExploitFilter] = useState('all');
+
+  // Filter states for Compliance Frameworks
+  const [frameworkSearchTerm, setFrameworkSearchTerm] = useState('');
+  const [frameworkPriorityFilter, setFrameworkPriorityFilter] = useState('all');
+  const [frameworkCategoryFilter, setFrameworkCategoryFilter] = useState('all');
+  const [frameworkStatusFilter, setFrameworkStatusFilter] = useState('all');
+
+  // Filter states for Threat Intel
+  const [threatSearchTerm, setThreatSearchTerm] = useState('');
+  const [threatSeverityFilter, setThreatSeverityFilter] = useState('all');
+  const [threatCategoryFilter, setThreatCategoryFilter] = useState('all');
+
   // Fetch data from APIs (polling disabled to prevent lag issues)
   const { data: resilienceData, loading: resilienceLoading, error: resilienceError, refresh: refreshResilience } = useResilience();
   const { data: threatData, loading: threatLoading, error: threatError, refresh: refreshThreats } = useThreats();
@@ -613,21 +630,160 @@ export default function ARPRIDashboard() {
     humanEscalations: 0
   };
 
+  // Filtered data for AI Vulnerabilities
+  const filteredVulnerabilities = aiVulnerabilities.filter(vuln => {
+    const matchesSearch = vulnSearchTerm === '' ||
+      vuln.title.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
+      vuln.description.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
+      vuln.id.toLowerCase().includes(vulnSearchTerm.toLowerCase());
+
+    const matchesSeverity = vulnSeverityFilter === 'all' || vuln.severity === vulnSeverityFilter;
+    const matchesCategory = vulnCategoryFilter === 'all' || vuln.category === vulnCategoryFilter;
+    const matchesExploit = vulnExploitFilter === 'all' ||
+      (vulnExploitFilter === 'yes' && vuln.exploitAvailable) ||
+      (vulnExploitFilter === 'no' && !vuln.exploitAvailable);
+
+    return matchesSearch && matchesSeverity && matchesCategory && matchesExploit;
+  });
+
+  // Filtered data for Compliance Frameworks
+  const filteredFrameworks = complianceFrameworks.filter(framework => {
+    const matchesSearch = frameworkSearchTerm === '' ||
+      framework.framework.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
+      framework.description.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
+      framework.owner.toLowerCase().includes(frameworkSearchTerm.toLowerCase());
+
+    const matchesPriority = frameworkPriorityFilter === 'all' || framework.priority === frameworkPriorityFilter;
+    const matchesCategory = frameworkCategoryFilter === 'all' || framework.category === frameworkCategoryFilter;
+    const matchesStatus = frameworkStatusFilter === 'all' || framework.status === frameworkStatusFilter;
+
+    return matchesSearch && matchesPriority && matchesCategory && matchesStatus;
+  });
+
+  // Filtered data for Threats (OWASP)
+  const owaspThreats = feedsData?.owasp?.data || [];
+  const filteredThreats = owaspThreats.filter(threat => {
+    const matchesSearch = threatSearchTerm === '' ||
+      threat.name.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
+      threat.description.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
+      (threat.mitigation && threat.mitigation.toLowerCase().includes(threatSearchTerm.toLowerCase()));
+
+    const matchesSeverity = threatSeverityFilter === 'all' || threat.severity === threatSeverityFilter;
+    const matchesCategory = threatCategoryFilter === 'all' ||
+      (threat.category && threat.category === threatCategoryFilter);
+
+    return matchesSearch && matchesSeverity && matchesCategory;
+  });
+
   const handleExport = () => {
-    const data = {
-      exportDate: new Date().toISOString(),
-      resilience: resilienceData,
-      threats: threatData,
-      compliance: complianceData,
-      models: modelData,
-      fraud: fraudData
+    const exportData = {
+      // Export Metadata
+      metadata: {
+        exportDate: new Date().toISOString(),
+        exportVersion: '3.0',
+        dashboardName: 'ARPRI AI Risk & Payment Risk Intelligence Dashboard',
+        generatedBy: 'ARPRI Dashboard v3.0',
+        dataTimestamp: new Date().toISOString()
+      },
+
+      // Executive Summary
+      executiveSummary: {
+        totalVulnerabilities: vulnerabilitySummary.total || 0,
+        criticalVulnerabilities: vulnerabilitySummary.critical || 0,
+        exploitableVulnerabilities: vulnerabilitySummary.exploitable || 0,
+        totalFrameworks: complianceSummary.totalFrameworks || 0,
+        activeFrameworks: complianceSummary.activeFrameworks || 0,
+        averageCompliance: complianceSummary.averageCoverage || 0,
+        totalControls: complianceSummary.totalControls || 0,
+        implementedControls: complianceSummary.implementedControls || 0,
+        totalFindings: complianceSummary.totalFindings || 0,
+        resilienceScore: resilienceScore.overall || 0,
+        fraudMetrics: {
+          transactionsPerSecond: fraudMetrics.transactionsPerSecond,
+          fraudAttempts: fraudMetrics.fraudAttempts,
+          blockedRate: fraudMetrics.blockedRate
+        }
+      },
+
+      // Filtered Data (if filters are active)
+      filters: {
+        vulnerabilities: {
+          applied: vulnSearchTerm || vulnSeverityFilter !== 'all' || vulnCategoryFilter !== 'all' || vulnExploitFilter !== 'all',
+          searchTerm: vulnSearchTerm,
+          severity: vulnSeverityFilter,
+          category: vulnCategoryFilter,
+          exploit: vulnExploitFilter,
+          resultsCount: filteredVulnerabilities.length,
+          totalCount: aiVulnerabilities.length
+        },
+        frameworks: {
+          applied: frameworkSearchTerm || frameworkPriorityFilter !== 'all' || frameworkCategoryFilter !== 'all' || frameworkStatusFilter !== 'all',
+          searchTerm: frameworkSearchTerm,
+          priority: frameworkPriorityFilter,
+          category: frameworkCategoryFilter,
+          status: frameworkStatusFilter,
+          resultsCount: filteredFrameworks.length,
+          totalCount: complianceFrameworks.length
+        },
+        threats: {
+          applied: threatSearchTerm || threatSeverityFilter !== 'all',
+          searchTerm: threatSearchTerm,
+          severity: threatSeverityFilter,
+          resultsCount: filteredThreats.length,
+          totalCount: owaspThreats.length
+        }
+      },
+
+      // Detailed Data
+      aiVulnerabilities: {
+        summary: vulnerabilitySummary,
+        categories: vulnerabilityCategories,
+        vulnerabilities: filteredVulnerabilities.length > 0 ? filteredVulnerabilities : aiVulnerabilities,
+        filterApplied: filteredVulnerabilities.length !== aiVulnerabilities.length
+      },
+
+      complianceFrameworks: {
+        summary: complianceSummary,
+        categories: complianceCategories,
+        frameworks: filteredFrameworks.length > 0 ? filteredFrameworks : complianceFrameworks,
+        filterApplied: filteredFrameworks.length !== complianceFrameworks.length
+      },
+
+      threatIntelligence: {
+        source: 'OWASP Top 10 for LLM + NIST NVD',
+        threats: filteredThreats.length > 0 ? filteredThreats : owaspThreats,
+        filterApplied: filteredThreats.length !== owaspThreats.length,
+        industryMetrics: industryData?.overview || {}
+      },
+
+      resilienceMetrics: {
+        score: resilienceScore,
+        timeseries: timeSeriesData,
+        radar: radarData,
+        distribution: riskDistribution
+      },
+
+      fraudDetection: fraudData,
+
+      externalFeeds: {
+        nvd: feedsData?.nvd || [],
+        cisa: feedsData?.cisa || [],
+        mitre: feedsData?.mitre || [],
+        github: feedsData?.github || []
+      }
     };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `arpri-export-${new Date().toISOString().split('T')[0]}.json`;
+    const timestamp = new Date().toISOString().split('T')[0];
+    const filterSuffix = (filteredVulnerabilities.length !== aiVulnerabilities.length ||
+                         filteredFrameworks.length !== complianceFrameworks.length ||
+                         filteredThreats.length !== owaspThreats.length) ? '-filtered' : '';
+    a.download = `arpri-dashboard-export-${timestamp}${filterSuffix}.json`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   const tabs = [
@@ -977,8 +1133,67 @@ export default function ARPRIDashboard() {
                     </a>
                   </div>
 
+                  {/* Filter Controls */}
+                  <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4 mb-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Search */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Search</label>
+                        <input
+                          type="text"
+                          value={threatSearchTerm}
+                          onChange={(e) => setThreatSearchTerm(e.target.value)}
+                          placeholder="Search threats..."
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                        />
+                      </div>
+
+                      {/* Severity Filter */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Severity</label>
+                        <select
+                          value={threatSeverityFilter}
+                          onChange={(e) => setThreatSeverityFilter(e.target.value)}
+                          className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                        >
+                          <option value="all">All Severities</option>
+                          <option value="CRITICAL">Critical</option>
+                          <option value="HIGH">High</option>
+                          <option value="MEDIUM">Medium</option>
+                          <option value="LOW">Low</option>
+                        </select>
+                      </div>
+
+                      {/* Category Filter - Placeholder for future use */}
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Results</label>
+                        <div className="flex items-center h-10 px-3 py-2 bg-gray-800/50 border border-gray-700 rounded-lg">
+                          <span className="text-sm text-gray-400">
+                            Showing {filteredThreats.length} of {owaspThreats.length}
+                          </span>
+                          {(threatSearchTerm || threatSeverityFilter !== 'all') && (
+                            <button
+                              onClick={() => {
+                                setThreatSearchTerm('');
+                                setThreatSeverityFilter('all');
+                              }}
+                              className="ml-auto text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {feedsData.owasp.data.map((threat, index) => {
+                    {filteredThreats.length === 0 ? (
+                      <div className="col-span-full bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
+                        <p className="text-gray-400">No threats match your filters</p>
+                      </div>
+                    ) : (
+                      filteredThreats.map((threat, index) => {
                       const severityColors = {
                         'CRITICAL': 'border-red-500/50 bg-red-500/10',
                         'HIGH': 'border-orange-500/50 bg-orange-500/10',
@@ -1009,7 +1224,8 @@ export default function ARPRIDashboard() {
                           </div>
                         </div>
                       );
-                    })}
+                    })
+                    )}
                   </div>
                 </div>
 
@@ -1193,9 +1409,103 @@ export default function ARPRIDashboard() {
               <ErrorDisplay message={complianceError} onRetry={refreshCompliance} />
             ) : (
               <>
+                {/* Filter Controls */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Search */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Search</label>
+                      <input
+                        type="text"
+                        value={frameworkSearchTerm}
+                        onChange={(e) => setFrameworkSearchTerm(e.target.value)}
+                        placeholder="Search frameworks..."
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    {/* Priority Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Priority</label>
+                      <select
+                        value={frameworkPriorityFilter}
+                        onChange={(e) => setFrameworkPriorityFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All Priorities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                      </select>
+                    </div>
+
+                    {/* Category Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Category</label>
+                      <select
+                        value={frameworkCategoryFilter}
+                        onChange={(e) => setFrameworkCategoryFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All Categories</option>
+                        <option value="AI Governance">AI Governance</option>
+                        <option value="AI Regulation">AI Regulation</option>
+                        <option value="AI Security">AI Security</option>
+                        <option value="Payment Security">Payment Security</option>
+                        <option value="Data Privacy">Data Privacy</option>
+                        <option value="Financial Services">Financial Services</option>
+                        <option value="Financial Compliance">Financial Compliance</option>
+                        <option value="Information Security">Information Security</option>
+                        <option value="Service Organization">Service Organization</option>
+                        <option value="Cybersecurity">Cybersecurity</option>
+                      </select>
+                    </div>
+
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Status</label>
+                      <select
+                        value={frameworkStatusFilter}
+                        onChange={(e) => setFrameworkStatusFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="pending">Pending</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Results count */}
+                  <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">
+                      Showing {filteredFrameworks.length} of {complianceFrameworks.length} frameworks
+                    </span>
+                    {(frameworkSearchTerm || frameworkPriorityFilter !== 'all' || frameworkCategoryFilter !== 'all' || frameworkStatusFilter !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setFrameworkSearchTerm('');
+                          setFrameworkPriorityFilter('all');
+                          setFrameworkCategoryFilter('all');
+                          setFrameworkStatusFilter('all');
+                        }}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Framework Cards */}
                 <div className="space-y-4">
-                  {complianceFrameworks.map((framework, index) => {
+                  {filteredFrameworks.length === 0 ? (
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
+                      <p className="text-gray-400">No frameworks match your filters</p>
+                    </div>
+                  ) : (
+                    filteredFrameworks.map((framework, index) => {
                     const priorityColors = {
                       critical: { border: 'border-red-500/50', bg: 'bg-red-500/5', badge: 'bg-red-500/20 text-red-400' },
                       high: { border: 'border-orange-500/50', bg: 'bg-orange-500/5', badge: 'bg-orange-500/20 text-orange-400' },
@@ -1294,7 +1604,8 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                  )}
                 </div>
 
                 {/* Category Breakdown Chart */}
@@ -1384,9 +1695,98 @@ export default function ARPRIDashboard() {
               <ErrorDisplay message={modelError} onRetry={refreshModels} />
             ) : (
               <>
+                {/* Filter Controls */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    {/* Search */}
+                    <div className="lg:col-span-2">
+                      <label className="block text-xs text-gray-500 mb-2">Search</label>
+                      <input
+                        type="text"
+                        value={vulnSearchTerm}
+                        onChange={(e) => setVulnSearchTerm(e.target.value)}
+                        placeholder="Search by title, ID, or description..."
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+
+                    {/* Severity Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Severity</label>
+                      <select
+                        value={vulnSeverityFilter}
+                        onChange={(e) => setVulnSeverityFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All Severities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                      </select>
+                    </div>
+
+                    {/* Category Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Category</label>
+                      <select
+                        value={vulnCategoryFilter}
+                        onChange={(e) => setVulnCategoryFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All Categories</option>
+                        <option value="OWASP Top 10 for LLM">OWASP Top 10 for LLM</option>
+                        <option value="CVE">CVE</option>
+                        <option value="Adversarial ML">Adversarial ML</option>
+                        <option value="Privacy Attack">Privacy Attack</option>
+                        <option value="MITRE ATLAS">MITRE ATLAS</option>
+                      </select>
+                    </div>
+
+                    {/* Exploit Filter */}
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-2">Exploit Available</label>
+                      <select
+                        value={vulnExploitFilter}
+                        onChange={(e) => setVulnExploitFilter(e.target.value)}
+                        className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="all">All</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Results count */}
+                  <div className="mt-3 pt-3 border-t border-gray-800 flex items-center justify-between">
+                    <span className="text-sm text-gray-400">
+                      Showing {filteredVulnerabilities.length} of {aiVulnerabilities.length} vulnerabilities
+                    </span>
+                    {(vulnSearchTerm || vulnSeverityFilter !== 'all' || vulnCategoryFilter !== 'all' || vulnExploitFilter !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setVulnSearchTerm('');
+                          setVulnSeverityFilter('all');
+                          setVulnCategoryFilter('all');
+                          setVulnExploitFilter('all');
+                        }}
+                        className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        Clear Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Vulnerability Cards */}
                 <div className="space-y-4">
-                  {aiVulnerabilities.map((vuln, index) => {
+                  {filteredVulnerabilities.length === 0 ? (
+                    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
+                      <p className="text-gray-400">No vulnerabilities match your filters</p>
+                    </div>
+                  ) : (
+                    filteredVulnerabilities.map((vuln, index) => {
                     const severityColors = {
                       critical: { border: 'border-red-500/50', bg: 'bg-red-500/10', text: 'text-red-400', badge: 'bg-red-500/20' },
                       high: { border: 'border-orange-500/50', bg: 'bg-orange-500/10', text: 'text-orange-400', badge: 'bg-orange-500/20' },
@@ -1467,7 +1867,8 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                     );
-                  })}
+                  })
+                  )}
                 </div>
 
                 {/* Category Statistics */}
