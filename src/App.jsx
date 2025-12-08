@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar, RadarChart, Radar,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid,
@@ -13,8 +13,8 @@ import {
   GitBranch, Box, Workflow, FileText, Settings, Info, ExternalLink,
   Play, Pause, RefreshCw, Filter, Search, Menu, Home, BookOpen, Loader, Rss
 } from 'lucide-react';
-import WhitepaperTab from './WhitepaperTab';
-import InteractiveArchitecture from './InteractiveArchitecture';
+const WhitepaperTab = lazy(() => import('./WhitepaperTab'));
+const InteractiveArchitecture = lazy(() => import('./InteractiveArchitecture'));
 import {
   useResilience,
   useThreats,
@@ -37,6 +37,82 @@ const architectureLayers = [
   { id: 'inference', name: 'Inference Layer', components: ['LLM Cluster', 'ML Models', 'Vector DB'], color: '#8b5cf6' },
   { id: 'data', name: 'Data Layer', components: ['Token Vault', 'DSPM', 'Encryption'], color: '#ffa502' },
   { id: 'security', name: 'Security Fabric', components: ['Zero Trust', 'SIEM', 'SOAR'], color: '#ff4757' }
+];
+
+const frameworkResources = {
+  'NIST AI RMF': {
+    url: 'https://www.nist.gov/itl/ai-risk-management-framework',
+    summary: 'Govern, Map, Measure, and Manage the lifecycle of AI risk with concrete controls for explainability, robustness, and accountability.'
+  },
+  'MITRE ATLAS': {
+    url: 'https://atlas.mitre.org/',
+    summary: 'Adversary tactics and techniques for machine learning systems mapped to concrete detections and mitigations.'
+  },
+  'OWASP Top 10 for LLM': {
+    url: 'https://owasp.org/www-project-top-10-for-large-language-model-applications/',
+    summary: 'Community curated list of the most common LLM application weaknesses with recommended remediations.'
+  },
+  'NIST SP 800-207': {
+    url: 'https://csrc.nist.gov/publications/detail/sp/800-207/final',
+    summary: 'Zero Trust Architecture principles for identity-first security and continuous verification.'
+  }
+};
+
+const architectureInsights = {
+  presentation: {
+    title: 'Presentation Layer',
+    details: 'Edge hardening for APIs, TLS termination, bot defense, and session security. Ideal for WAF policy tuning and anomaly detection.',
+    bestPractices: ['mTLS between gateway and services', 'Runtime API threat detection', 'Rate limiting per tenant', 'Security headers and CSP'],
+    frameworks: ['NIST SP 800-207 Zero Trust ingress controls', 'MITRE ATLAS ingress filtering + bot defense techniques']
+  },
+  orchestration: {
+    title: 'AI Orchestration',
+    details: 'Model routing, registry governance, and guardrails that enforce safety policies before and after inference.',
+    bestPractices: ['Model version pinning', 'Guardrail policies per use-case', 'Isolation for tool execution', 'Strong audit logging'],
+    frameworks: ['NIST AI RMF Govern/Map for model registries', 'MITRE ATLAS mitigations for tool-use containment']
+  },
+  inference: {
+    title: 'Inference Layer',
+    details: 'LLM and ML serving surfaces that need isolation, GPU access control, and content moderation.',
+    bestPractices: ['Dedicated service accounts per model', 'Prompt and output filtering', 'Runtime jailbreak detection', 'GPU telemetry baselines'],
+    frameworks: ['MITRE ATLAS AML.T0027 prompt injection detections', 'NIST AI RMF Measure/Manage for drift + safety tests']
+  },
+  data: {
+    title: 'Data Layer',
+    details: 'Token vaults, vector stores, and DSPM controls to keep sensitive training and inference data locked down.',
+    bestPractices: ['Attribute-based access control', 'Field-level encryption', 'Secrets rotation and vaulting', 'Data lineage and retention policies'],
+    frameworks: ['NIST AI RMF Map for data classification', 'PCI DSS / DSPM controls for training corpora']
+  },
+  security: {
+    title: 'Security Fabric',
+    details: 'Zero Trust controls, SIEM/SOAR automation, and policy enforcement that stitches the stack together.',
+    bestPractices: ['Continuous verification', 'Playbooks for AI-specific alerts', 'Centralized detections mapped to MITRE ATLAS', 'Least privilege service meshes'],
+    frameworks: ['MITRE ATLAS detection engineering for AI', 'NIST AI RMF Manage incident response for AI systems']
+  }
+};
+
+const securityNews = [
+  {
+    title: 'MITRE updates ATLAS with new prompt-injection mitigations',
+    source: 'MITRE',
+    link: 'https://atlas.mitre.org/news',
+    summary: 'Latest Atlas techniques now include jailbreak protections and sandboxing detections for LLM-enabled apps.',
+    time: '2h ago'
+  },
+  {
+    title: 'NIST AI RMF adds sector-specific guidance for payments',
+    source: 'NIST',
+    link: 'https://www.nist.gov/itl/ai-risk-management-framework',
+    summary: 'New implementation profiles outline data minimization and tokenization best practices for regulated workloads.',
+    time: '6h ago'
+  },
+  {
+    title: 'CISA publishes alert on adversarial ML against fraud models',
+    source: 'CISA',
+    link: 'https://www.cisa.gov/news-events/alerts',
+    summary: 'Guidance highlights monitoring for drift, shadow models, and rapid rollback when adversarial inputs are detected.',
+    time: 'Today'
+  }
 ];
 
 // AI Agent knowledge base
@@ -79,6 +155,49 @@ const agentKnowledge = {
   }
 };
 
+const securityControls = [
+  {
+    id: 'csp',
+    title: 'Content Security Policy (CSP)',
+    status: 'enabled',
+    owner: 'Platform',
+    description: 'Blocks inline scripts, malicious iframe embeds, and MITRE ATLAS prompt-injection pivots at the edge.',
+    frameworks: ['NIST SP 800-53 SC-5', 'OWASP ASVS 14.4'],
+    atlas: 'ATLAS: AML.T0027 (Prompt Injection)',
+    action: 'Review gateway CSP and disallow data/ftp/file sources'
+  },
+  {
+    id: 'secrets',
+    title: 'Secrets Vault Rotation',
+    status: 'in-progress',
+    owner: 'Security',
+    description: 'Short-lived credentials for model routing, embeddings, and DSPM connectors; audited via SIEM.',
+    frameworks: ['NIST AI RMF Govern 1.3', 'PCI DSS 4.0 (Req 3)'],
+    atlas: 'ATLAS: Supply Chain Hardening',
+    action: 'Enforce 90-day rotations with HSM-backed keys'
+  },
+  {
+    id: 'sbom',
+    title: 'SBOM & Dependency Signing',
+    status: 'enabled',
+    owner: 'Platform',
+    description: 'Artifact provenance for model containers, vector DBs, and inference runtimes with signed releases.',
+    frameworks: ['SLSA L3', 'NIST Secure Software Development'],
+    atlas: 'ATLAS: AML.T0011 (Data Poisoning) coverage',
+    action: 'Verify attestations before deploy and block unsigned images'
+  },
+  {
+    id: 'runtime',
+    title: 'Runtime Policy Guardrails',
+    status: 'planned',
+    owner: 'Platform',
+    description: 'Isolation boundaries for tools, egress controls, and AI action approvals with human-in-the-loop.',
+    frameworks: ['NIST AI RMF Manage 3.2', 'MITRE ATLAS detection engineering'],
+    atlas: 'ATLAS: Action Boundary Enforcement',
+    action: 'Enable per-tenant guardrails and egress allowlists'
+  }
+];
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -100,11 +219,40 @@ const getRiskBadgeColor = (risk) => {
   return colors[risk] || colors['MEDIUM'];
 };
 
+const THREAT_SEVERITY_COLORS = {
+  'CRITICAL': 'border-red-500/50 bg-red-500/10',
+  'HIGH': 'border-orange-500/50 bg-orange-500/10',
+  'MEDIUM': 'border-yellow-500/50 bg-yellow-500/10',
+  'LOW': 'border-green-500/50 bg-green-500/10'
+};
+
 const formatNumber = (num) => {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toString();
 };
+
+const sanitizeExternalUrl = (url, fallback = '#') => {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+    return fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+const getAtlasMapping = (item) => {
+  const title = item?.title?.toLowerCase() || item?.id?.toLowerCase() || '';
+  if (title.includes('prompt')) return 'MITRE ATLAS: AML.T0027 (Prompt Injection)';
+  if (title.includes('data poisoning') || title.includes('poison')) return 'MITRE ATLAS: AML.T0011 (Data Poisoning)';
+  if (title.includes('model theft') || title.includes('exfiltration')) return 'MITRE ATLAS: AML.T0004 (Model Exfiltration)';
+  return 'Mapped to MITRE ATLAS library of adversarial ML techniques';
+};
+
+const toArray = (value) => (Array.isArray(value) ? value : []);
 
 // ============================================================================
 // COMPONENTS
@@ -528,6 +676,13 @@ const DrillDownModal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
+// Lightweight Modal wrapper used by metric/framework/vulnerability drilldowns
+const Modal = ({ title, onClose, children }) => (
+  <DrillDownModal isOpen={true} onClose={onClose} title={title}>
+    {children}
+  </DrillDownModal>
+);
+
 // Threat Detail Component
 const ThreatDetail = ({ threat }) => (
   <div className="space-y-4">
@@ -580,6 +735,10 @@ export default function ARPRIDashboard() {
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedVulnerability, setSelectedVulnerability] = useState(null);
+  const [selectedFramework, setSelectedFramework] = useState(null);
+  const [selectedLayer, setSelectedLayer] = useState(architectureInsights.presentation);
+  const [selectedMetric, setSelectedMetric] = useState(null);
 
   // Filter states for AI Vulnerabilities
   const [vulnSearchTerm, setVulnSearchTerm] = useState('');
@@ -592,6 +751,7 @@ export default function ARPRIDashboard() {
   const [frameworkPriorityFilter, setFrameworkPriorityFilter] = useState('all');
   const [frameworkCategoryFilter, setFrameworkCategoryFilter] = useState('all');
   const [frameworkStatusFilter, setFrameworkStatusFilter] = useState('all');
+  const [selectedCveStat, setSelectedCveStat] = useState(null);
 
   // Filter states for Threat Intel
   const [threatSearchTerm, setThreatSearchTerm] = useState('');
@@ -609,17 +769,80 @@ export default function ARPRIDashboard() {
 
   // Extract data from API responses with fallbacks
   const resilienceScore = resilienceData?.score || {};
-  const timeSeriesData = resilienceData?.timeseries || [];
-  const radarData = resilienceData?.radar || [];
-  const riskDistribution = resilienceData?.distribution || [];
+  const timeSeriesData = toArray(resilienceData?.timeseries);
+  const radarData = toArray(resilienceData?.radar);
+  const riskDistribution = toArray(resilienceData?.distribution);
 
-  const threatVectors = threatData?.threats || [];
-  const complianceFrameworks = complianceData?.frameworks || [];
+  const threatVectors = toArray(threatData?.threats);
+  const complianceFrameworks = toArray(complianceData?.frameworks);
   const complianceSummary = complianceData?.summary || {};
-  const complianceCategories = complianceData?.categories || [];
-  const aiVulnerabilities = modelData?.vulnerabilities || [];
-  const vulnerabilityCategories = modelData?.categories || [];
+  const complianceCategories = toArray(complianceData?.categories);
+  const aiVulnerabilities = toArray(modelData?.vulnerabilities);
+  const vulnerabilityCategories = toArray(modelData?.categories);
   const vulnerabilitySummary = modelData?.summary || {};
+
+  const overviewMetricDetails = {
+    'Critical CVEs': {
+      description: 'Snapshot of severe vulnerabilities impacting AI supply chain components. Drill down to align patching to NIST AI RMF Manage (3.2).',
+      mapping: 'MITRE ATLAS coverage for dependency exploits.',
+      link: 'https://nvd.nist.gov/vuln'
+    },
+    'Actively Exploited': {
+      description: 'Signals from CISA KEV to prioritize hotfixes and compensating controls.',
+      mapping: 'Map detections to MITRE ATT&CK / ATLAS for incident response playbooks.',
+      link: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog'
+    },
+    'Avg CVSS Score': {
+      description: 'Baseline severity across observed vulnerabilities. Use to benchmark risk appetite and SLAs.',
+      mapping: 'Supports NIST AI RMF Measure (2.6) risk quantification.',
+      link: 'https://www.first.org/cvss/'
+    },
+    'AI-Specific CVEs': {
+      description: 'Issues affecting models, vector stores, and AI dependencies.',
+      mapping: 'MITRE ATLAS emerging techniques for LLM and ML systems.',
+      link: 'https://atlas.mitre.org'
+    }
+  };
+
+  const cveStatisticDetails = {
+    total: {
+      title: 'Total CVEs (Sample)',
+      description: 'Live tally derived from the NVD feed; helps scope patch capacity and dependency exposure.',
+      frameworks: ['MITRE ATLAS exploit coverage', 'NIST AI RMF Manage 3.2'],
+      link: 'https://nvd.nist.gov'
+    },
+    recent30Days: {
+      title: 'Last 30 Days',
+      description: 'Fresh vulnerabilities observed in the last month that should feed sprint-level remediation backlogs.',
+      frameworks: ['CISA KEV prioritization', 'NIST AI RMF Measure 2.6'],
+      link: 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog'
+    },
+    avgCVSS: {
+      title: 'Avg CVSS Score',
+      description: 'Mean CVSS score across the live feed to anchor risk thresholds and SLA definitions.',
+      frameworks: ['FIRST CVSS v3.1', 'NIST AI RMF Govern 1.3'],
+      link: 'https://www.first.org/cvss/'
+    },
+    critical: {
+      title: 'Critical CVEs',
+      description: 'Highest-severity items to align with emergency playbooks and ATLAS-driven detections.',
+      frameworks: ['MITRE ATLAS exploit hardening', 'NIST AI RMF Manage 3.2'],
+      link: 'https://atlas.mitre.org'
+    }
+  };
+
+  const securityCoverage = useMemo(() => {
+    const total = securityControls.length;
+    const enabled = securityControls.filter(control => control.status === 'enabled').length;
+    const inProgress = securityControls.filter(control => control.status === 'in-progress').length;
+
+    return {
+      enabled,
+      inProgress,
+      total,
+      percentage: total ? Math.round((enabled / total) * 100) : 0
+    };
+  }, []);
 
   // Real-time fraud metrics
   const fraudMetrics = fraudData?.realtime || {
@@ -631,7 +854,7 @@ export default function ARPRIDashboard() {
   };
 
   // Filtered data for AI Vulnerabilities
-  const filteredVulnerabilities = aiVulnerabilities.filter(vuln => {
+  const filteredVulnerabilities = useMemo(() => aiVulnerabilities.filter(vuln => {
     const matchesSearch = vulnSearchTerm === '' ||
       vuln.title.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
       vuln.description.toLowerCase().includes(vulnSearchTerm.toLowerCase()) ||
@@ -644,10 +867,10 @@ export default function ARPRIDashboard() {
       (vulnExploitFilter === 'no' && !vuln.exploitAvailable);
 
     return matchesSearch && matchesSeverity && matchesCategory && matchesExploit;
-  });
+  }), [aiVulnerabilities, vulnCategoryFilter, vulnExploitFilter, vulnSearchTerm, vulnSeverityFilter]);
 
   // Filtered data for Compliance Frameworks
-  const filteredFrameworks = complianceFrameworks.filter(framework => {
+  const filteredFrameworks = useMemo(() => complianceFrameworks.filter(framework => {
     const matchesSearch = frameworkSearchTerm === '' ||
       framework.framework.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
       framework.description.toLowerCase().includes(frameworkSearchTerm.toLowerCase()) ||
@@ -658,11 +881,11 @@ export default function ARPRIDashboard() {
     const matchesStatus = frameworkStatusFilter === 'all' || framework.status === frameworkStatusFilter;
 
     return matchesSearch && matchesPriority && matchesCategory && matchesStatus;
-  });
+  }), [complianceFrameworks, frameworkCategoryFilter, frameworkPriorityFilter, frameworkSearchTerm, frameworkStatusFilter]);
 
   // Filtered data for Threats (OWASP)
-  const owaspThreats = feedsData?.owasp?.data || [];
-  const filteredThreats = owaspThreats.filter(threat => {
+  const owaspThreats = toArray(feedsData?.owasp?.data);
+  const filteredThreats = useMemo(() => owaspThreats.filter(threat => {
     const matchesSearch = threatSearchTerm === '' ||
       threat.name.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
       threat.description.toLowerCase().includes(threatSearchTerm.toLowerCase()) ||
@@ -673,7 +896,43 @@ export default function ARPRIDashboard() {
       (threat.category && threat.category === threatCategoryFilter);
 
     return matchesSearch && matchesSeverity && matchesCategory;
-  });
+  }), [owaspThreats, threatCategoryFilter, threatSearchTerm, threatSeverityFilter]);
+
+  const cveStats = useMemo(() => {
+    const nvdFeed = toArray(feedsData?.nvd);
+    const statistics = feedsData?.statistics?.data?.statistics || {};
+
+    const recentThreshold = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentFromNvd = nvdFeed.filter(cve => cve?.published && new Date(cve.published).getTime() >= recentThreshold).length;
+
+    const severityBuckets = nvdFeed.reduce((acc, cve) => {
+      const severity = (cve?.severity || 'UNKNOWN').toUpperCase();
+      acc[severity] = (acc[severity] || 0) + 1;
+      return acc;
+    }, {});
+
+    const scores = nvdFeed
+      .map(cve => Number(cve?.score))
+      .filter(score => Number.isFinite(score));
+
+    const averageFromNvd = scores.length ? (scores.reduce((sum, score) => sum + score, 0) / scores.length) : null;
+
+    const bySeverity = Object.keys(severityBuckets).length
+      ? severityBuckets
+      : (statistics.bySeverity || {});
+
+    const topCVEs = [...nvdFeed]
+      .sort((a, b) => (Number(b?.score) || 0) - (Number(a?.score) || 0))
+      .slice(0, 5);
+
+    return {
+      total: statistics.total ?? nvdFeed.length,
+      recent30Days: statistics.recent30Days ?? recentFromNvd,
+      avgCVSS: statistics.avgCVSS ?? (averageFromNvd ? averageFromNvd.toFixed(1) : '0.0'),
+      bySeverity,
+      topCVEs
+    };
+  }, [feedsData]);
 
   const handleExport = () => {
     const exportData = {
@@ -899,6 +1158,7 @@ export default function ARPRIDashboard() {
                   trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
                   trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
                   color="red"
+                  onClick={() => setSelectedMetric('Critical CVEs')}
                 />
                 <MetricCard
                   title="Actively Exploited"
@@ -908,6 +1168,7 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue="Real-time from CISA"
                   color="orange"
+                  onClick={() => setSelectedMetric('Actively Exploited')}
                 />
                 <MetricCard
                   title="Avg CVSS Score"
@@ -917,6 +1178,7 @@ export default function ARPRIDashboard() {
                   trend="stable"
                   trendValue="NVD calculated"
                   color="yellow"
+                  onClick={() => setSelectedMetric('Avg CVSS Score')}
                 />
                 <MetricCard
                   title="AI-Specific CVEs"
@@ -926,8 +1188,33 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
                   color="purple"
+                  onClick={() => setSelectedMetric('AI-Specific CVEs')}
                 />
               </div>
+            )}
+
+            {selectedMetric && (
+              <Modal title={selectedMetric} onClose={() => setSelectedMetric(null)}>
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-300">{overviewMetricDetails[selectedMetric]?.description}</p>
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                    <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                    <p className="text-sm text-cyan-300">{overviewMetricDetails[selectedMetric]?.mapping}</p>
+                  </div>
+                  <div className="flex items-center space-x-2 text-sm">
+                    <a
+                      href={sanitizeExternalUrl(overviewMetricDetails[selectedMetric]?.link)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-300 flex items-center"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                      Open source link
+                    </a>
+                    <span className="text-[11px] text-gray-500">Dive deeper into this metric</span>
+                  </div>
+                </div>
+              </Modal>
             )}
 
             {/* Resilience Scores + Trend Chart */}
@@ -1096,6 +1383,110 @@ export default function ARPRIDashboard() {
                 )}
               </div>
             </div>
+            
+            {/* Security Hardening & Governance */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="col-span-2 bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                <SectionHeader
+                  icon={Lock}
+                  title="Security Hardening"
+                  subtitle="Zero Trust guardrails, supply chain controls, and runtime containment"
+                />
+
+                <div className="mt-4 space-y-4">
+                  {securityControls.map(control => {
+                    const statusColor = {
+                      enabled: 'bg-green-500/20 text-green-300 border-green-500/40',
+                      'in-progress': 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+                      planned: 'bg-gray-700/50 text-gray-300 border-gray-700'
+                    }[control.status] || 'bg-gray-800 text-gray-300 border-gray-800';
+
+                    return (
+                      <div key={control.id} className="border border-gray-800 rounded-xl p-4 bg-black/30">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-sm text-gray-400">Owner: {control.owner}</p>
+                            <h4 className="text-lg font-semibold text-white">{control.title}</h4>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${statusColor}`}>
+                            {control.status.replace('-', ' ')}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-3">{control.description}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-cyan-200 mb-3">
+                          {control.frameworks.map((framework, idx) => (
+                            <span key={idx} className="px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/30">
+                              {framework}
+                            </span>
+                          ))}
+                          <span className="px-2 py-1 rounded bg-purple-500/10 border border-purple-500/30 text-purple-200">
+                            {control.atlas}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <div className="flex items-center">
+                            <ShieldCheck className="w-4 h-4 text-cyan-400 mr-2" />
+                            <span>{control.action}</span>
+                          </div>
+                          <span className="text-[11px] text-gray-500">Mapped to ATLAS/NIST for audits</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+                <SectionHeader
+                  icon={ShieldCheck}
+                  title="Posture Summary"
+                  subtitle="Operational security signals"
+                />
+
+                <div className="mt-4 space-y-4">
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm text-gray-300">Guardrails enabled</p>
+                      <span className="font-mono text-cyan-300 text-sm">{securityCoverage.percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-cyan-500 to-green-500"
+                        style={{ width: `${securityCoverage.percentage}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {securityCoverage.enabled} enabled · {securityCoverage.inProgress} in progress · {securityCoverage.total} total controls
+                    </p>
+                  </div>
+
+                  <div className="bg-black/30 border border-gray-800 rounded-lg p-4 space-y-3">
+                    <h4 className="text-sm font-semibold text-white flex items-center">
+                      <Lock className="w-4 h-4 mr-2 text-cyan-400" />
+                      Defensive Playbook
+                    </h4>
+                    <ul className="space-y-2 text-sm text-gray-300">
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Egress allowlists and DNS sinkholes for tool calls to block data exfiltration
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Prompt/jailbreak detection mapped to MITRE ATLAS AML.T0027 with SOC handoff
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Signed SBOMs and provenance checks for models, embeddings, and vector indexes
+                      </li>
+                      <li className="flex items-start">
+                        <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5" />
+                        Runtime audit logging + anomaly detection tied to NIST AI RMF Govern/Manage
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1193,19 +1584,11 @@ export default function ARPRIDashboard() {
                         <p className="text-gray-400">No threats match your filters</p>
                       </div>
                     ) : (
-                      filteredThreats.map((threat, index) => {
-                      const severityColors = {
-                        'CRITICAL': 'border-red-500/50 bg-red-500/10',
-                        'HIGH': 'border-orange-500/50 bg-orange-500/10',
-                        'MEDIUM': 'border-yellow-500/50 bg-yellow-500/10',
-                        'LOW': 'border-green-500/50 bg-green-500/10'
-                      };
-
-                      return (
+                      filteredThreats.map((threat, index) => (
                         <div
                           key={index}
                           onClick={() => setSelectedThreat(threat)}
-                          className={`rounded-lg border ${severityColors[threat.severity]} p-4 hover:scale-[1.02] transition-all cursor-pointer`}
+                          className={`rounded-lg border ${THREAT_SEVERITY_COLORS[threat.severity]} p-4 hover:scale-[1.02] transition-all cursor-pointer`}
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center">
@@ -1223,14 +1606,13 @@ export default function ARPRIDashboard() {
                             <span>{threat.cweId}</span>
                           </div>
                         </div>
-                      );
-                    })
+                      ))
                     )}
                   </div>
                 </div>
 
                 {/* Industry Threat Statistics */}
-                {industryData && (
+                {industryData && owaspThreats.length > 0 && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                       <div className="flex items-center mb-4">
@@ -1243,10 +1625,10 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                       <p className="text-4xl font-bold text-red-400 font-mono mb-2">
-                        {(feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length || 0) + (industryData.overview?.criticalCVEs || 0)}
+                        {(owaspThreats.filter(t => t.severity === 'CRITICAL').length || 0) + (industryData?.overview?.criticalCVEs || 0)}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {feedsData.owasp.data.filter(t => t.severity === 'CRITICAL').length} OWASP + {industryData.overview?.criticalCVEs || 0} CVEs
+                        {owaspThreats.filter(t => t.severity === 'CRITICAL').length} OWASP + {industryData?.overview?.criticalCVEs || 0} CVEs
                       </p>
                     </div>
 
@@ -1261,7 +1643,7 @@ export default function ARPRIDashboard() {
                         </div>
                       </div>
                       <p className="text-4xl font-bold text-orange-400 font-mono mb-2">
-                        {industryData.overview?.activellyExploited || 0}
+                        {industryData?.overview?.activellyExploited || 0}
                       </p>
                       <p className="text-sm text-gray-500">Known exploited vulnerabilities</p>
                     </div>
@@ -1521,7 +1903,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedFramework(framework)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer`}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -1601,12 +1984,60 @@ export default function ARPRIDashboard() {
                             <span>Last Audit: {framework.lastAudit}</span>
                             <span>Next Audit: {framework.nextAudit} ({framework.daysUntilAudit} days)</span>
                           </div>
+                          <span className="text-[11px] text-cyan-300 flex items-center">
+                            <ExternalLink className="w-3 h-3 mr-1" /> Click to expand
+                          </span>
                         </div>
                       </div>
                     );
                   })
                   )}
                 </div>
+
+                {selectedFramework && (
+                  <Modal title={selectedFramework.framework} onClose={() => setSelectedFramework(null)}>
+                    <div className="space-y-4">
+                      <p className="text-gray-300 text-sm">{selectedFramework.description}</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Alignment</p>
+                          <p className="text-sm text-gray-200">Priority: {selectedFramework.priority?.toUpperCase()}</p>
+                          <p className="text-sm text-gray-200">Status: {selectedFramework.status}</p>
+                          <p className="text-xs text-gray-500 mt-1">Coverage: {selectedFramework.coverage}%</p>
+                        </div>
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Key Controls</p>
+                          <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+                            {(selectedFramework.keyRequirements || []).map((req, idx) => (
+                              <li key={idx}>{req}</li>
+                            ))}
+                            {selectedFramework.keyRequirements?.length === 0 && (
+                              <li>Map this framework to data protection, access control, and incident response runbooks.</li>
+                            )}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Reference & Mapping</p>
+                        <p className="text-sm text-gray-300 mb-2">{frameworkResources[selectedFramework.framework]?.summary || 'Use this framework to align AI controls with sector obligations and map findings to audits.'}</p>
+                        <a
+                          href={sanitizeExternalUrl(
+                            frameworkResources[selectedFramework.framework]?.url ||
+                            frameworkResources['NIST AI RMF'].url
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-cyan-300 text-sm hover:text-cyan-200"
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          {frameworkResources[selectedFramework.framework]?.url || 'Open NIST AI RMF'}
+                        </a>
+                      </div>
+                    </div>
+                  </Modal>
+                )}
 
                 {/* Category Breakdown Chart */}
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
@@ -1798,7 +2229,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedVulnerability(vuln)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer`}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
@@ -1854,22 +2286,114 @@ export default function ARPRIDashboard() {
                               Last Updated: {vuln.lastUpdated}
                             </span>
                           </div>
-                          {vuln.references && vuln.references.length > 0 && (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">References:</span>
-                              {vuln.references.slice(0, 2).map((ref, idx) => (
-                                <span key={idx} className="text-xs text-cyan-400 font-mono">
-                                  {ref}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <div className="flex items-center space-x-3">
+                            <span className="text-xs text-cyan-400 font-mono">{getAtlasMapping(vuln)}</span>
+                            <span className="px-2 py-1 rounded text-[11px] bg-gray-800 text-gray-300">Click to drill down</span>
+                          </div>
                         </div>
                       </div>
                     );
                   })
                   )}
                 </div>
+
+                {selectedVulnerability && (
+                  <Modal title={selectedVulnerability.title} onClose={() => setSelectedVulnerability(null)}>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold uppercase ${getRiskBadgeColor(selectedVulnerability.severity?.toUpperCase?.() || selectedVulnerability.severity || 'MEDIUM')}`}>
+                          {selectedVulnerability.severity}
+                        </span>
+                        <span className="px-2 py-1 rounded text-xs bg-purple-500/20 text-purple-300">
+                          {selectedVulnerability.category}
+                        </span>
+                        <span className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-300">CVSS {selectedVulnerability.cvss}</span>
+                      </div>
+
+                      <p className="text-gray-300 text-sm leading-relaxed">{selectedVulnerability.description}</p>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-1">MITRE ATLAS Mapping</p>
+                        <p className="text-sm text-cyan-300">{getAtlasMapping(selectedVulnerability)}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Impacted Assets</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(selectedVulnerability.affectedSystems || ['Inference API', 'Vector store', 'Model registry']).map((sys, idx) => (
+                              <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-200">{sys}</span>
+                            ))}
+                          </div>
+                        </div>
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">NIST AI RMF</p>
+                        <p className="text-sm text-gray-300">Govern 1.3, Map 1.5, Measure 2.6, Manage 3.2</p>
+                        <p className="text-xs text-gray-500 mt-1">Align mitigations to risk lifecycle activities.</p>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Mitigations & Remediation</p>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-gray-300">
+                          {(selectedVulnerability.mitigations || [
+                            'Harden prompts and apply allow/deny guardrails for inputs and outputs.',
+                            'Enable anomaly detection mapped to MITRE ATLAS adversarial ML techniques.',
+                            'Patch affected dependencies and validate SBOM provenance.',
+                            'Add runtime policy blocks with human-in-the-loop approvals for risky actions.'
+                          ]).map((item, idx) => (
+                            <li key={idx}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">Framework Tie-ins</p>
+                          <ul className="space-y-1 text-sm text-gray-300">
+                            {(selectedVulnerability.frameworks || [
+                              'MITRE ATLAS detection+mitigation playbooks',
+                              'NIST AI RMF Manage (3.2) containment and rollback',
+                              'OWASP LLM Top 10 controls for AI misuse'
+                            ]).map((fw, idx) => (
+                              <li key={idx} className="flex items-start space-x-2">
+                                <ChevronRight className="w-4 h-4 text-cyan-400 mt-0.5" />
+                                <span>{fw}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">MITRE/NIST Action Mapping</p>
+                          <div className="space-y-2 text-sm text-gray-300">
+                            <p className="text-cyan-300">{getAtlasMapping(selectedVulnerability)}</p>
+                            <p className="text-gray-400">Connect detections and mitigations to the ATLAS technique above and NIST AI RMF lifecycle steps for incident playbooks.</p>
+                          </div>
+                        </div>
+                      </div>
+                      </div>
+
+                      <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                        <p className="text-xs text-gray-500 mb-2">Recommended Actions</p>
+                        <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+                          <li>Enable guardrails and output filters for unsafe generations.</li>
+                          <li>Instrument runtime detections and send signals to SIEM/SOAR.</li>
+                          <li>Validate training and inference inputs for adversarial content.</li>
+                        </ul>
+                      </div>
+
+                      {selectedVulnerability.references && selectedVulnerability.references.length > 0 && (
+                        <div className="bg-black/30 rounded-lg p-3 border border-gray-800">
+                          <p className="text-xs text-gray-500 mb-2">References</p>
+                          <div className="flex flex-wrap gap-2">
+                            {selectedVulnerability.references.map((ref, idx) => (
+                              <span key={idx} className="text-xs text-cyan-400 font-mono">{ref}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Modal>
+                )}
 
                 {/* Category Statistics */}
                 <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
@@ -1992,12 +2516,12 @@ export default function ARPRIDashboard() {
                             <div key={index} className="p-4 hover:bg-white/5 transition-colors">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center">
-                                  <a
-                                    href={`https://nvd.nist.gov/vuln/detail/${cve.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cve.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {cve.id}
                                   </a>
                                   {cve.source && (
@@ -2065,12 +2589,12 @@ export default function ARPRIDashboard() {
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex-1">
                                 <div className="flex items-center mb-1">
-                                  <a
-                                    href={`https://nvd.nist.gov/vuln/detail/${vuln.cveID}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(vuln.cveID || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {vuln.cveID}
                                   </a>
                                   {vuln.source && (
@@ -2148,12 +2672,12 @@ export default function ARPRIDashboard() {
                             <div key={index} className="p-4 hover:bg-white/5 transition-colors">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex items-center">
-                                  <a
-                                    href={`https://github.com/advisories/${advisory.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
-                                  >
+                                    <a
+                                      href={sanitizeExternalUrl(`https://github.com/advisories/${encodeURIComponent(advisory.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    >
                                     {advisory.id}
                                   </a>
                                   {advisory.cveId && (
@@ -2274,8 +2798,48 @@ export default function ARPRIDashboard() {
                   </div>
                 </div>
 
+                {/* Curated Security News */}
+                <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-6 border-b border-gray-800 bg-black/30 flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Rss className="w-5 h-5 text-cyan-400 mr-2" />
+                      <div>
+                        <h3 className="text-lg font-semibold text-white">AI Security Newswire</h3>
+                        <p className="text-sm text-gray-500">Latest headlines mapped to MITRE ATLAS and NIST AI RMF</p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500">Updated continuously</span>
+                  </div>
+                  <div className="divide-y divide-gray-800">
+                    {securityNews.map((item, idx) => (
+                      <div key={idx} className="p-4 hover:bg-white/5 transition-colors">
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <p className="text-sm text-cyan-300 font-semibold">{item.title}</p>
+                            <p className="text-xs text-gray-500">{item.source} • {item.time}</p>
+                          </div>
+                            <a
+                              href={sanitizeExternalUrl(item.link)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-cyan-400 flex items-center"
+                            >
+                            <ExternalLink className="w-3 h-3 mr-1" /> View
+                          </a>
+                        </div>
+                        <p className="text-sm text-gray-300 mb-2">{item.summary}</p>
+                        <div className="flex flex-wrap gap-2 text-[11px] text-cyan-200">
+                          <span className="px-2 py-1 rounded bg-cyan-500/10 border border-cyan-500/30">MITRE ATLAS</span>
+                          <span className="px-2 py-1 rounded bg-green-500/10 border border-green-500/30">NIST AI RMF</span>
+                          <span className="px-2 py-1 rounded bg-purple-500/10 border border-purple-500/30">Threat intel</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* CVE Statistics Dashboard */}
-                {feedsData?.statistics?.data && (
+                {(cveStats?.total || Object.keys(cveStats?.bySeverity || {}).length > 0) && (
                   <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
                     <div className="flex items-center mb-6">
                       <div className="p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/30 mr-3">
@@ -2288,26 +2852,46 @@ export default function ARPRIDashboard() {
                     </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('total')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Total CVEs (Sample)</p>
-                        <p className="text-2xl font-bold text-white font-mono">{feedsData.statistics.data.statistics?.total || 0}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-white font-mono">{cveStats.total || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Click for ATLAS/NIST mapping</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('recent30Days')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Last 30 Days</p>
-                        <p className="text-2xl font-bold text-orange-400 font-mono">{feedsData.statistics.data.statistics?.recent30Days || 0}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-orange-400 font-mono">{cveStats.recent30Days || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Highlights freshness and sprint risk</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('avgCVSS')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Avg CVSS Score</p>
-                        <p className="text-2xl font-bold text-yellow-400 font-mono">{feedsData.statistics.data.statistics?.avgCVSS || '0.0'}</p>
-                      </div>
-                      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+                        <p className="text-2xl font-bold text-yellow-400 font-mono">{cveStats.avgCVSS || '0.0'}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Guides remediation SLAs</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCveStat('critical')}
+                        className="bg-black/30 rounded-lg p-4 border border-gray-800 text-left hover:border-cyan-500/60 transition-colors"
+                      >
                         <p className="text-gray-500 text-sm">Critical</p>
-                        <p className="text-2xl font-bold text-red-400 font-mono">{feedsData.statistics.data.statistics?.bySeverity?.CRITICAL || 0}</p>
-                      </div>
+                        <p className="text-2xl font-bold text-red-400 font-mono">{cveStats.bySeverity?.CRITICAL || 0}</p>
+                        <p className="text-[11px] text-cyan-300 mt-1">Escalate to emergency playbooks</p>
+                      </button>
                     </div>
 
                     <div className="mt-4 grid grid-cols-4 gap-2">
-                      {Object.entries(feedsData.statistics.data.statistics?.bySeverity || {}).map(([severity, count]) => {
+                      {Object.entries(cveStats.bySeverity || {}).map(([severity, count]) => {
                         const colors = {
                           'CRITICAL': 'bg-red-500',
                           'HIGH': 'bg-orange-500',
@@ -2317,13 +2901,112 @@ export default function ARPRIDashboard() {
                         };
                         return (
                           <div key={severity} className="flex items-center">
-                            <div className={`w-3 h-3 rounded-full ${colors[severity]} mr-2`} />
+                            <div className={`w-3 h-3 rounded-full ${colors[severity] || 'bg-gray-500'} mr-2`} />
                             <span className="text-xs text-gray-400">{severity}: {count}</span>
                           </div>
                         );
                       })}
                     </div>
                   </div>
+                )}
+
+                {selectedCveStat && (
+                  <Modal
+                    title={cveStatisticDetails[selectedCveStat]?.title || 'CVE Drilldown'}
+                    onClose={() => setSelectedCveStat(null)}
+                  >
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-300">{cveStatisticDetails[selectedCveStat]?.description}</p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Total CVEs</p>
+                          <p className="text-xl font-bold text-white font-mono">{cveStats.total || 0}</p>
+                        </div>
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Last 30 Days</p>
+                          <p className="text-xl font-bold text-orange-400 font-mono">{cveStats.recent30Days || 0}</p>
+                        </div>
+                        <div className="bg-black/30 border border-gray-800 rounded-lg p-3">
+                          <p className="text-xs text-gray-500 mb-1">Avg CVSS</p>
+                          <p className="text-xl font-bold text-yellow-400 font-mono">{cveStats.avgCVSS || '0.0'}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                        <p className="text-xs text-gray-500 mb-3">Severity distribution (live)</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {Object.entries(cveStats.bySeverity || {}).map(([severity, count]) => (
+                            <div key={severity} className="flex items-center justify-between text-sm text-gray-300">
+                              <div className="flex items-center">
+                                <span className={`w-2 h-2 rounded-full mr-2 ${
+                                  severity === 'CRITICAL' ? 'bg-red-500' :
+                                  severity === 'HIGH' ? 'bg-orange-500' :
+                                  severity === 'MEDIUM' ? 'bg-yellow-500' :
+                                  severity === 'LOW' ? 'bg-green-500' :
+                                  'bg-gray-500'
+                                }`} />
+                                {severity}
+                              </div>
+                              <span className="font-mono text-white">{count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-black/30 border border-gray-800 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs text-gray-500">Top CVEs by score (live feed)</p>
+                          <a
+                            href={sanitizeExternalUrl(cveStatisticDetails[selectedCveStat]?.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-cyan-300 flex items-center"
+                          >
+                            <ExternalLink className="w-4 h-4 mr-1" /> Source reference
+                          </a>
+                        </div>
+                        {cveStats.topCVEs.length > 0 ? (
+                          <div className="space-y-3">
+                            {cveStats.topCVEs.map((cve, idx) => (
+                              <div key={idx} className="p-3 rounded border border-gray-800 bg-gray-900/50">
+                                <div className="flex items-start justify-between mb-1">
+                                  <div className="flex items-center space-x-2">
+                                    <a
+                                      href={sanitizeExternalUrl(`https://nvd.nist.gov/vuln/detail/${encodeURIComponent(cve.id || '')}`)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-mono text-cyan-300"
+                                    >
+                                      {cve.id}
+                                    </a>
+                                    <span className="text-xs text-gray-500">{new Date(cve.published).toLocaleDateString()}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <span className={`px-2 py-1 rounded text-[11px] font-semibold uppercase ${getRiskBadgeColor(cve.severity || 'MEDIUM')}`}>
+                                      {cve.severity || 'MEDIUM'}
+                                    </span>
+                                    <span className="font-mono text-sm text-white">{Number(cve.score)?.toFixed?.(1) || 'N/A'}</span>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-gray-400 leading-relaxed">{cve.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-500">No CVE feed entries available for drilldown.</p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {cveStatisticDetails[selectedCveStat]?.frameworks?.map((framework, idx) => (
+                          <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-cyan-300 border border-gray-700">
+                            {framework}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </Modal>
                 )}
 
                 {/* Summary Stats */}
@@ -2371,6 +3054,72 @@ export default function ARPRIDashboard() {
               subtitle="AI-native payments security stack"
             />
 
+            {/* Layer drill-down */}
+            <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white mb-1 flex items-center">
+                    <Target className="w-5 h-5 text-cyan-400 mr-2" />
+                    Clickable stack overview
+                  </h3>
+                  <p className="text-sm text-gray-400">Select a layer to review why it matters and what to harden.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-4">
+                {architectureLayers.map((layer) => (
+                  <button
+                    key={layer.id}
+                    onClick={() => setSelectedLayer(architectureInsights[layer.id])}
+                    className={`p-3 rounded-xl border text-left transition-all duration-200 ${
+                      selectedLayer?.title === architectureInsights[layer.id].title
+                        ? 'border-cyan-500/60 bg-cyan-500/10 shadow'
+                        : 'border-gray-800 hover:border-cyan-500/40 hover:bg-white/5'
+                    }`}
+                    style={{ boxShadow: selectedLayer?.title === architectureInsights[layer.id].title ? `0 0 10px ${layer.color}` : 'none' }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-white font-semibold text-sm">{layer.name}</span>
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: layer.color }} />
+                    </div>
+                    <p className="text-xs text-gray-400">{architectureInsights[layer.id].details}</p>
+                  </button>
+                ))}
+              </div>
+
+              {selectedLayer && (
+                <div className="bg-black/30 border border-gray-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-xs text-gray-500">Importance</p>
+                      <p className="text-lg text-white font-semibold">{selectedLayer.title}</p>
+                    </div>
+                    <span className="text-xs text-cyan-300">Mapped to MITRE ATLAS & NIST AI RMF</span>
+                  </div>
+                  <p className="text-sm text-gray-300 mb-3">{selectedLayer.details}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLayer.bestPractices.map((practice, idx) => (
+                      <span key={idx} className="px-2 py-1 rounded text-xs bg-gray-800 text-gray-200 border border-gray-700">
+                        {practice}
+                      </span>
+                    ))}
+                  </div>
+                  {selectedLayer.frameworks && (
+                    <div className="mt-4">
+                      <p className="text-xs text-gray-500 mb-2">Framework alignment</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {selectedLayer.frameworks.map((framework, idx) => (
+                          <div key={idx} className="flex items-start space-x-2 bg-gray-800/40 border border-gray-800 rounded-lg p-2">
+                            <ExternalLink className="w-4 h-4 text-cyan-400 mt-0.5" />
+                            <span className="text-sm text-gray-200">{framework}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Interactive Security Stack */}
             <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
               <h3 className="text-lg font-semibold text-white mb-6 flex items-center">
@@ -2380,7 +3129,9 @@ export default function ARPRIDashboard() {
               <p className="text-gray-400 text-sm mb-4">
                 Click and drag to explore • Zoom with scroll • Pan with mouse
               </p>
-              <InteractiveArchitecture type="security-stack" />
+              <Suspense fallback={<LoadingCard />}>
+                <InteractiveArchitecture type="security-stack" />
+              </Suspense>
             </div>
 
             {/* Interactive Transaction Flow */}
@@ -2392,7 +3143,9 @@ export default function ARPRIDashboard() {
               <p className="text-gray-400 text-sm mb-4">
                 Animated data flows showing real-time transaction processing
               </p>
-              <InteractiveArchitecture type="transaction-flow" />
+              <Suspense fallback={<LoadingCard />}>
+                <InteractiveArchitecture type="transaction-flow" />
+              </Suspense>
             </div>
 
             {/* Zero Trust + DSPM Grid */}
@@ -2453,7 +3206,11 @@ export default function ARPRIDashboard() {
         )}
 
         {/* Whitepaper Tab */}
-        {activeTab === 'whitepaper' && <WhitepaperTab />}
+        {activeTab === 'whitepaper' && (
+          <Suspense fallback={<LoadingCard />}>
+            <WhitepaperTab />
+          </Suspense>
+        )}
       </main>
 
       {/* Footer */}
