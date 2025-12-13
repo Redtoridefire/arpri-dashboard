@@ -507,6 +507,47 @@ const ArchitectureDiagram = ({ type }) => {
   return null;
 };
 
+// Flip Card Component
+const FlipCard = ({ front, back, className = "" }) => {
+  const [isFlipped, setIsFlipped] = useState(false);
+
+  return (
+    <div
+      className={`flip-card relative ${className}`}
+      style={{ perspective: '1000px' }}
+      onMouseEnter={() => setIsFlipped(true)}
+      onMouseLeave={() => setIsFlipped(false)}
+    >
+      <div
+        className="flip-card-inner relative w-full h-full transition-transform duration-500"
+        style={{
+          transformStyle: 'preserve-3d',
+          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
+        }}
+      >
+        {/* Front */}
+        <div
+          className="flip-card-front absolute w-full h-full backface-hidden"
+          style={{ backfaceVisibility: 'hidden' }}
+        >
+          {front}
+        </div>
+
+        {/* Back */}
+        <div
+          className="flip-card-back absolute w-full h-full backface-hidden"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)'
+          }}
+        >
+          {back}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Drill-down Modal Component
 const DrillDownModal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -514,7 +555,7 @@ const DrillDownModal = ({ isOpen, onClose, title, children }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div className="w-full max-w-4xl bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-black/30 sticky top-0">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-black/30 sticky top-0 z-10">
           <h3 className="font-semibold text-white text-lg">{title}</h3>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
             <X className="w-5 h-5 text-gray-400" />
@@ -547,15 +588,248 @@ const ThreatDetail = ({ threat }) => (
         <p className="text-2xl font-bold text-white font-mono">{threat.incidents}</p>
       </div>
     </div>
-    
+
     <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
       <p className="text-gray-500 text-sm mb-2">Description</p>
       <p className="text-gray-300">{threat.description}</p>
     </div>
-    
+
     <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
       <p className="text-gray-500 text-sm mb-2">Recommended Mitigations</p>
       <p className="text-gray-300">{threat.mitigation}</p>
+    </div>
+  </div>
+);
+
+// Vulnerability Detail Component with MITRE ATLAS
+const VulnerabilityDetail = ({ vulnerability }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-4 gap-4">
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Severity</p>
+        <span className={`inline-block mt-1 px-3 py-1 rounded text-sm font-bold border ${
+          vulnerability.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+          vulnerability.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
+          'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+        }`}>
+          {vulnerability.severity?.toUpperCase()}
+        </span>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">CVSS Score</p>
+        <p className="text-2xl font-bold font-mono" style={{ color: getScoreColor((10 - vulnerability.cvss) * 10) }}>
+          {vulnerability.cvss}
+        </p>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Exploit Available</p>
+        <p className="text-2xl font-bold text-white font-mono">
+          {vulnerability.exploitAvailable ? '✓' : '✗'}
+        </p>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Category</p>
+        <p className="text-white text-sm mt-1 font-medium">{vulnerability.category}</p>
+      </div>
+    </div>
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">Description</p>
+      <p className="text-gray-300">{vulnerability.description}</p>
+    </div>
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">Affected Systems</p>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {vulnerability.affectedSystems?.map((system, idx) => (
+          <span key={idx} className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded text-cyan-400 text-sm">
+            {system}
+          </span>
+        ))}
+      </div>
+    </div>
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">Recommended Patches & Mitigations</p>
+      <p className="text-gray-300">{vulnerability.patches}</p>
+    </div>
+
+    {vulnerability.mitreAtlas && (
+      <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg p-4">
+        <div className="flex items-center mb-3">
+          <Shield className="w-5 h-5 text-purple-400 mr-2" />
+          <h4 className="text-white font-semibold">MITRE ATT&CK ATLAS Mapping</h4>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-gray-400 text-sm mb-1">Tactic</p>
+            <p className="text-purple-400 font-medium">{vulnerability.mitreAtlas.tactic}</p>
+          </div>
+          <div>
+            <p className="text-gray-400 text-sm mb-1">Technique</p>
+            <p className="text-purple-400 font-medium">{vulnerability.mitreAtlas.technique}</p>
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <p className="text-gray-400 text-sm mb-1">Attack Procedure</p>
+          <p className="text-gray-300 text-sm">{vulnerability.mitreAtlas.procedure}</p>
+        </div>
+
+        <div className="mt-3">
+          <p className="text-gray-400 text-sm mb-2">MITRE Mitigations</p>
+          <div className="space-y-1">
+            {vulnerability.mitreAtlas.mitigations?.map((mitigation, idx) => (
+              <div key={idx} className="flex items-start">
+                <CheckCircle className="w-4 h-4 text-green-400 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-300 text-sm">{mitigation}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3">
+          <p className="text-gray-400 text-sm mb-2">Detection Methods</p>
+          <div className="space-y-1">
+            {vulnerability.mitreAtlas.detections?.map((detection, idx) => (
+              <div key={idx} className="flex items-start">
+                <Eye className="w-4 h-4 text-cyan-400 mr-2 mt-0.5 flex-shrink-0" />
+                <span className="text-gray-300 text-sm">{detection}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">References</p>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {vulnerability.references?.map((ref, idx) => (
+          <span key={idx} className="px-2 py-1 bg-gray-800 border border-gray-700 rounded text-gray-400 text-xs font-mono">
+            {ref}
+          </span>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Framework Detail Component with NIST AI RMF
+const FrameworkDetail = ({ framework }) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-4 gap-4">
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Coverage</p>
+        <p className="text-2xl font-bold font-mono" style={{ color: getScoreColor(framework.coverage || framework.baseCoverage) }}>
+          {framework.coverage || framework.baseCoverage}%
+        </p>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Status</p>
+        <span className={`inline-block mt-1 px-3 py-1 rounded text-sm font-bold border ${
+          framework.status === 'active' ? 'bg-green-500/20 text-green-400 border-green-500/50' :
+          'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+        }`}>
+          {framework.status?.toUpperCase()}
+        </span>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Controls</p>
+        <p className="text-2xl font-bold text-white font-mono">
+          {framework.implementedControls}/{framework.totalControls}
+        </p>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm">Findings</p>
+        <p className="text-2xl font-bold text-white font-mono">{framework.findings}</p>
+      </div>
+    </div>
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">Description</p>
+      <p className="text-gray-300">{framework.description}</p>
+    </div>
+
+    <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+      <p className="text-gray-500 text-sm mb-2">Key Requirements</p>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {framework.keyRequirements?.map((req, idx) => (
+          <div key={idx} className="flex items-start">
+            <CheckCircle className="w-4 h-4 text-cyan-400 mr-2 mt-0.5 flex-shrink-0" />
+            <span className="text-gray-300 text-sm">{req}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    {framework.nistAiRmf && (
+      <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-lg p-4">
+        <div className="flex items-center mb-4">
+          <Shield className="w-5 h-5 text-cyan-400 mr-2" />
+          <h4 className="text-white font-semibold">NIST AI RMF Functions</h4>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          {framework.nistAiRmf.functions?.map((func, idx) => (
+            <div key={idx} className="bg-black/30 rounded-lg p-3 border border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <h5 className="text-cyan-400 font-bold text-sm">{func.name}</h5>
+                <span className="text-white font-mono text-sm">{func.coverage}%</span>
+              </div>
+              <p className="text-gray-400 text-xs mb-2">{func.description}</p>
+              <div className="space-y-1">
+                {func.categories?.map((cat, catIdx) => (
+                  <div key={catIdx} className="flex items-center justify-between text-xs">
+                    <span className="text-gray-500">{cat.id}: {cat.title}</span>
+                    <span className={`px-2 py-0.5 rounded ${
+                      cat.status === 'implemented' ? 'bg-green-500/20 text-green-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {cat.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-black/30 rounded-lg p-3 border border-gray-700">
+          <h5 className="text-cyan-400 font-semibold text-sm mb-3">AI Trustworthiness Characteristics</h5>
+          <div className="space-y-2">
+            {framework.nistAiRmf.trustCharacteristics?.map((char, idx) => (
+              <div key={idx}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-gray-300 text-xs">{char.name}</span>
+                  <span className="text-white font-mono text-xs">{char.score}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${char.score}%`,
+                      backgroundColor: getScoreColor(char.score)
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    <div className="grid grid-cols-2 gap-4">
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm mb-1">Owner</p>
+        <p className="text-white font-medium">{framework.owner}</p>
+      </div>
+      <div className="bg-black/30 rounded-lg p-4 border border-gray-800">
+        <p className="text-gray-500 text-sm mb-1">Category</p>
+        <p className="text-white font-medium">{framework.category}</p>
+      </div>
     </div>
   </div>
 );
@@ -580,6 +854,8 @@ export default function ARPRIDashboard() {
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [selectedThreat, setSelectedThreat] = useState(null);
   const [selectedModel, setSelectedModel] = useState(null);
+  const [selectedVulnerability, setSelectedVulnerability] = useState(null);
+  const [selectedFramework, setSelectedFramework] = useState(null);
 
   // Filter states for AI Vulnerabilities
   const [vulnSearchTerm, setVulnSearchTerm] = useState('');
@@ -1798,7 +2074,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedVulnerability(vuln)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer hover:shadow-lg`}
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">

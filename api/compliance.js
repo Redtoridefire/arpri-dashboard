@@ -17,7 +17,64 @@ const FRAMEWORKS = [
     findings: 2,
     owner: 'AI Ethics Team',
     documentationUrl: 'https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf',
-    keyRequirements: ['Risk Assessment', 'Model Validation', 'Bias Testing', 'Monitoring']
+    keyRequirements: ['Risk Assessment', 'Model Validation', 'Bias Testing', 'Monitoring'],
+    nistAiRmf: {
+      functions: [
+        {
+          name: 'GOVERN',
+          description: 'Cultivates organizational culture and structures for trustworthy AI',
+          categories: [
+            { id: 'GV.1', title: 'Accountable AI Governance', status: 'implemented', controls: 6 },
+            { id: 'GV.2', title: 'Legal & Regulatory Compliance', status: 'implemented', controls: 4 },
+            { id: 'GV.3', title: 'AI Risk Management Strategy', status: 'implemented', controls: 5 },
+            { id: 'GV.4', title: 'Organizational Policies', status: 'partial', controls: 3 }
+          ],
+          coverage: 95
+        },
+        {
+          name: 'MAP',
+          description: 'Establishes context to frame AI risks',
+          categories: [
+            { id: 'MP.1', title: 'Context Establishment', status: 'implemented', controls: 4 },
+            { id: 'MP.2', title: 'Categorization of AI Systems', status: 'implemented', controls: 5 },
+            { id: 'MP.3', title: 'Impact Assessment', status: 'implemented', controls: 4 },
+            { id: 'MP.4', title: 'Risk & Benefit Analysis', status: 'partial', controls: 3 }
+          ],
+          coverage: 92
+        },
+        {
+          name: 'MEASURE',
+          description: 'Employs tools and methodologies to analyze and track AI risks',
+          categories: [
+            { id: 'MS.1', title: 'Risk Measurement & Tracking', status: 'implemented', controls: 5 },
+            { id: 'MS.2', title: 'Validation & Verification', status: 'implemented', controls: 6 },
+            { id: 'MS.3', title: 'AI System Monitoring', status: 'implemented', controls: 4 },
+            { id: 'MS.4', title: 'Incident Response Metrics', status: 'implemented', controls: 3 }
+          ],
+          coverage: 96
+        },
+        {
+          name: 'MANAGE',
+          description: 'Allocates resources to map, measure, and manage AI risks',
+          categories: [
+            { id: 'MG.1', title: 'Response Planning', status: 'implemented', controls: 3 },
+            { id: 'MG.2', title: 'Risk Treatment', status: 'partial', controls: 4 },
+            { id: 'MG.3', title: 'Continuous Improvement', status: 'implemented', controls: 3 },
+            { id: 'MG.4', title: 'Incident Management', status: 'implemented', controls: 2 }
+          ],
+          coverage: 90
+        }
+      ],
+      trustCharacteristics: [
+        { name: 'Valid & Reliable', score: 94 },
+        { name: 'Safe', score: 92 },
+        { name: 'Secure & Resilient', score: 96 },
+        { name: 'Accountable & Transparent', score: 88 },
+        { name: 'Explainable & Interpretable', score: 85 },
+        { name: 'Privacy-Enhanced', score: 93 },
+        { name: 'Fair - Bias Managed', score: 87 }
+      ]
+    }
   },
   {
     id: 'eu-ai-act',

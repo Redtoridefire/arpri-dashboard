@@ -42,7 +42,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: false,
     patches: 'Data validation, Provenance tracking, Sandboxed training',
     discovered: '2023-06-10',
-    references: ['OWASP-LLM03', 'ArXiv-2302.10149']
+    references: ['OWASP-LLM03', 'ArXiv-2302.10149'],
+    mitreAtlas: {
+      tactic: 'ML Attack Staging',
+      technique: 'AML.T0020 - Poison Training Data',
+      procedure: 'Insert malicious samples into training dataset to manipulate model behavior',
+      mitigations: [
+        'M0005 - Training Data Validation',
+        'M0007 - Data Provenance Tracking',
+        'M0016 - Anomaly Detection in Training'
+      ],
+      detections: [
+        'Monitor training data sources for unauthorized changes',
+        'Validate data distribution consistency',
+        'Track data lineage and provenance'
+      ]
+    }
   },
   {
     id: 'LLM04-2024',
@@ -146,7 +161,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Adversarial training, Input normalization, Ensemble defenses',
     discovered: '2024-03-01',
-    references: ['ArXiv-1312.6199', 'NIST-AI-100-2']
+    references: ['ArXiv-1312.6199', 'NIST-AI-100-2'],
+    mitreAtlas: {
+      tactic: 'ML Attack Execution',
+      technique: 'AML.T0015 - Craft Adversarial Data',
+      procedure: 'Generate adversarial examples using gradient-based methods (FGSM, PGD, C&W)',
+      mitigations: [
+        'M0013 - Input/Output Filtering',
+        'M0017 - Adversarial Training',
+        'M0019 - Ensemble Methods'
+      ],
+      detections: [
+        'Input anomaly detection',
+        'Confidence score monitoring',
+        'Statistical distribution analysis'
+      ]
+    }
   },
   {
     id: 'ADV-2024-002',
@@ -159,7 +189,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Differential privacy, Output perturbation, Access restrictions',
     discovered: '2024-03-15',
-    references: ['ArXiv-1805.04049', 'CVE-2024-23897']
+    references: ['ArXiv-1805.04049', 'CVE-2024-23897'],
+    mitreAtlas: {
+      tactic: 'Exfiltration',
+      technique: 'AML.T0024 - Infer Training Data',
+      procedure: 'Exploit model confidence scores and gradients to reconstruct sensitive training data',
+      mitigations: [
+        'M0011 - Differential Privacy',
+        'M0013 - Output Filtering',
+        'M0021 - Query Limiting'
+      ],
+      detections: [
+        'Monitor query patterns for reconstruction attempts',
+        'Track repeated similar queries',
+        'Alert on gradient access anomalies'
+      ]
+    }
   },
   {
     id: 'ADV-2024-003',
@@ -211,7 +256,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Model verification, Clean-label training, Trigger detection',
     discovered: '2024-05-01',
-    references: ['ATLAS-AML.T0018', 'ArXiv-2004.00053']
+    references: ['ATLAS-AML.T0018', 'ArXiv-2004.00053'],
+    mitreAtlas: {
+      tactic: 'ML Model Access',
+      technique: 'AML.T0018 - Backdoor ML Model',
+      procedure: 'Attacker embeds backdoor triggers in pre-trained models during transfer learning',
+      mitigations: [
+        'M0002 - Model Provenance Verification',
+        'M0005 - Training Data Validation',
+        'M0013 - Model Input/Output Filtering'
+      ],
+      detections: [
+        'Monitor for unexpected model behavior patterns',
+        'Analyze activation patterns for anomalies',
+        'Test models with known trigger patterns'
+      ]
+    }
   }
 ];
 
