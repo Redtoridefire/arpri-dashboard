@@ -1797,7 +1797,8 @@ export default function ARPRIDashboard() {
                     return (
                       <div
                         key={index}
-                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01]`}
+                        onClick={() => setSelectedFramework(framework)}
+                        className={`rounded-xl border ${colors.border} ${colors.bg} p-5 transition-all hover:scale-[1.01] cursor-pointer hover:shadow-lg`}
                       >
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -2813,6 +2814,24 @@ export default function ARPRIDashboard() {
             </div>
           </div>
         )}
+      </DrillDownModal>
+
+      {/* Vulnerability Detail Modal with MITRE ATLAS */}
+      <DrillDownModal
+        isOpen={!!selectedVulnerability}
+        onClose={() => setSelectedVulnerability(null)}
+        title={selectedVulnerability?.title || 'Vulnerability Details'}
+      >
+        {selectedVulnerability && <VulnerabilityDetail vulnerability={selectedVulnerability} />}
+      </DrillDownModal>
+
+      {/* Framework Detail Modal with NIST AI RMF */}
+      <DrillDownModal
+        isOpen={!!selectedFramework}
+        onClose={() => setSelectedFramework(null)}
+        title={selectedFramework?.framework || 'Framework Details'}
+      >
+        {selectedFramework && <FrameworkDetail framework={selectedFramework} />}
       </DrillDownModal>
     </div>
   );
