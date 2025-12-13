@@ -1424,45 +1424,125 @@ export default function ARPRIDashboard() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
-                  title="Critical CVEs"
-                  value={industryData?.overview?.criticalCVEs || 0}
-                  subtitle="Industry-wide (sample)"
-                  icon={AlertTriangle}
-                  trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
-                  trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
-                  color="red"
-                  onClick={() => setSelectedMetric('Critical CVEs')}
+                <FlipCard
+                  className="h-full"
+                  front={
+                    <MetricCard
+                      title="Critical CVEs"
+                      value={industryData?.overview?.criticalCVEs || 0}
+                      subtitle="Industry-wide (sample)"
+                      icon={AlertTriangle}
+                      trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
+                      trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
+                      color="red"
+                      onClick={() => setSelectedMetric('Critical CVEs')}
+                    />
+                  }
+                  back={
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-red-500/20 to-red-900/10 border border-red-500/30 backdrop-blur-sm p-5 h-full flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-2 flex items-center">
+                          <Info className="w-4 h-4 mr-2 text-red-400" />
+                          Details
+                        </h4>
+                        <p className="text-gray-300 text-sm mb-3">{overviewMetricDetails['Critical CVEs']?.description}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                        <p className="text-xs text-red-300">{overviewMetricDetails['Critical CVEs']?.mapping}</p>
+                      </div>
+                    </div>
+                  }
                 />
-                <MetricCard
-                  title="Actively Exploited"
-                  value={industryData?.overview?.activellyExploited || 0}
-                  subtitle="CISA KEV Catalog"
-                  icon={ShieldCheck}
-                  trend="up"
-                  trendValue="Real-time from CISA"
-                  color="orange"
-                  onClick={() => setSelectedMetric('Actively Exploited')}
+                <FlipCard
+                  className="h-full"
+                  front={
+                    <MetricCard
+                      title="Actively Exploited"
+                      value={industryData?.overview?.activellyExploited || 0}
+                      subtitle="CISA KEV Catalog"
+                      icon={ShieldCheck}
+                      trend="up"
+                      trendValue="Real-time from CISA"
+                      color="orange"
+                      onClick={() => setSelectedMetric('Actively Exploited')}
+                    />
+                  }
+                  back={
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-900/10 border border-orange-500/30 backdrop-blur-sm p-5 h-full flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-2 flex items-center">
+                          <Info className="w-4 h-4 mr-2 text-orange-400" />
+                          Details
+                        </h4>
+                        <p className="text-gray-300 text-sm mb-3">{overviewMetricDetails['Actively Exploited']?.description}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                        <p className="text-xs text-orange-300">{overviewMetricDetails['Actively Exploited']?.mapping}</p>
+                      </div>
+                    </div>
+                  }
                 />
-                <MetricCard
-                  title="Avg CVSS Score"
-                  value={(industryData?.overview?.avgCVSS || 0).toFixed(1)}
-                  subtitle="Industry baseline"
-                  icon={BarChart3}
-                  trend="stable"
-                  trendValue="NVD calculated"
-                  color="yellow"
-                  onClick={() => setSelectedMetric('Avg CVSS Score')}
+                <FlipCard
+                  className="h-full"
+                  front={
+                    <MetricCard
+                      title="Avg CVSS Score"
+                      value={(industryData?.overview?.avgCVSS || 0).toFixed(1)}
+                      subtitle="Industry baseline"
+                      icon={BarChart3}
+                      trend="stable"
+                      trendValue="NVD calculated"
+                      color="yellow"
+                      onClick={() => setSelectedMetric('Avg CVSS Score')}
+                    />
+                  }
+                  back={
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-yellow-500/20 to-yellow-900/10 border border-yellow-500/30 backdrop-blur-sm p-5 h-full flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-2 flex items-center">
+                          <Info className="w-4 h-4 mr-2 text-yellow-400" />
+                          Details
+                        </h4>
+                        <p className="text-gray-300 text-sm mb-3">{overviewMetricDetails['Avg CVSS Score']?.description}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                        <p className="text-xs text-yellow-300">{overviewMetricDetails['Avg CVSS Score']?.mapping}</p>
+                      </div>
+                    </div>
+                  }
                 />
-                <MetricCard
-                  title="AI-Specific CVEs"
-                  value={industryData?.aiSpecificRisks?.totalAICVEs || 0}
-                  subtitle="AI/ML vulnerabilities"
-                  icon={Cpu}
-                  trend="up"
-                  trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
-                  color="purple"
-                  onClick={() => setSelectedMetric('AI-Specific CVEs')}
+                <FlipCard
+                  className="h-full"
+                  front={
+                    <MetricCard
+                      title="AI-Specific CVEs"
+                      value={industryData?.aiSpecificRisks?.totalAICVEs || 0}
+                      subtitle="AI/ML vulnerabilities"
+                      icon={Cpu}
+                      trend="up"
+                      trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
+                      color="purple"
+                      onClick={() => setSelectedMetric('AI-Specific CVEs')}
+                    />
+                  }
+                  back={
+                    <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/20 to-purple-900/10 border border-purple-500/30 backdrop-blur-sm p-5 h-full flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold mb-2 flex items-center">
+                          <Info className="w-4 h-4 mr-2 text-purple-400" />
+                          Details
+                        </h4>
+                        <p className="text-gray-300 text-sm mb-3">{overviewMetricDetails['AI-Specific CVEs']?.description}</p>
+                      </div>
+                      <div className="bg-black/30 rounded-lg p-3">
+                        <p className="text-xs text-gray-500 mb-1">Framework Mapping</p>
+                        <p className="text-xs text-purple-300">{overviewMetricDetails['AI-Specific CVEs']?.mapping}</p>
+                      </div>
+                    </div>
+                  }
                 />
               </div>
             )}
