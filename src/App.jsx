@@ -232,16 +232,53 @@ const formatNumber = (num) => {
   return num.toString();
 };
 
+// Security: URL sanitization with protocol validation and trusted domain check
+// Prevents javascript:, data:, and other dangerous protocols
+const TRUSTED_DOMAINS = new Set([
+  'nvd.nist.gov',
+  'www.nist.gov',
+  'nist.gov',
+  'cisa.gov',
+  'www.cisa.gov',
+  'owasp.org',
+  'www.owasp.org',
+  'github.com',
+  'atlas.mitre.org',
+  'mitre.org',
+  'first.org',
+  'www.first.org',
+  'csrc.nist.gov'
+]);
+
 const sanitizeExternalUrl = (url, fallback = '#') => {
+  if (!url || typeof url !== 'string') return fallback;
+
   try {
     const parsed = new URL(url, window.location.origin);
-    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
-      return parsed.href;
+
+    // Only allow http/https protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      console.warn('Blocked non-http(s) URL:', url);
+      return fallback;
     }
-    return fallback;
+
+    // Warn if navigating to untrusted domain (but allow for flexibility)
+    if (!TRUSTED_DOMAINS.has(parsed.hostname)) {
+      console.warn('External URL to non-trusted domain:', parsed.hostname);
+    }
+
+    return parsed.href;
   } catch (e) {
+    console.warn('Invalid URL blocked:', url);
     return fallback;
   }
+};
+
+// Security: Sanitize text input to prevent XSS in search fields
+const sanitizeSearchInput = (input) => {
+  if (!input || typeof input !== 'string') return '';
+  // Remove potentially dangerous characters while preserving search functionality
+  return input.replace(/[<>'"]/g, '').slice(0, 200);
 };
 
 const getAtlasMapping = (item) => {
@@ -382,31 +419,79 @@ const LiveIndicator = () => (
 
 // Loading Skeleton Component
 const LoadingSkeleton = ({ className = "" }) => (
-  <div className={`animate-pulse bg-gray-800/50 rounded ${className}`} />
+  <div className={`animate-pulse skeleton-pulse bg-gray-800/50 rounded ${className}`} />
 );
 
-// Error Display Component
-const ErrorDisplay = ({ message, onRetry }) => (
-  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-center">
-    <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-    <p className="text-red-400 mb-4">{message || 'Failed to load data'}</p>
+// Error Display Component with enhanced visuals
+const ErrorDisplay = ({ message, onRetry, compact = false }) => (
+  <div className={`bg-red-500/10 border border-red-500/30 rounded-xl ${compact ? 'p-4' : 'p-6'} text-center`}>
+    <AlertCircle className={`${compact ? 'w-8 h-8' : 'w-12 h-12'} text-red-400 mx-auto mb-3`} />
+    <p className={`text-red-400 ${compact ? 'text-sm mb-2' : 'mb-4'}`}>{message || 'Failed to load data'}</p>
     {onRetry && (
       <button
         onClick={onRetry}
-        className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-colors"
+        className={`${compact ? 'px-3 py-1.5 text-xs' : 'px-4 py-2'} bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-colors flex items-center mx-auto`}
       >
+        <RefreshCw className={`${compact ? 'w-3 h-3' : 'w-4 h-4'} mr-1`} />
         Retry
       </button>
     )}
   </div>
 );
 
-// Loading Card Component
-const LoadingCard = () => (
-  <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-    <LoadingSkeleton className="h-6 w-32 mb-4" />
-    <LoadingSkeleton className="h-10 w-24 mb-2" />
-    <LoadingSkeleton className="h-4 w-40" />
+// Empty State Component for when no data matches filters
+const EmptyState = ({
+  icon: Icon = Search,
+  title = "No results found",
+  description = "Try adjusting your filters or search terms",
+  action,
+  actionLabel = "Clear filters"
+}) => (
+  <div className="empty-state bg-gray-900/30 border border-gray-800 rounded-xl">
+    <Icon className="empty-state-icon" />
+    <h3 className="empty-state-title">{title}</h3>
+    <p className="empty-state-description">{description}</p>
+    {action && (
+      <button
+        onClick={action}
+        className="mt-4 px-4 py-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-400 text-sm hover:bg-cyan-500/30 transition-colors"
+      >
+        {actionLabel}
+      </button>
+    )}
+  </div>
+);
+
+// Loading Card Component - Enhanced with flip card dimensions
+const LoadingCard = ({ height = "auto" }) => (
+  <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-5" style={{ height, minHeight: '160px' }}>
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <LoadingSkeleton className="h-4 w-24 mb-3" />
+        <LoadingSkeleton className="h-8 w-16 mb-2" />
+        <LoadingSkeleton className="h-3 w-32" />
+      </div>
+      <LoadingSkeleton className="h-12 w-12 rounded-lg" />
+    </div>
+    <div className="mt-4">
+      <LoadingSkeleton className="h-4 w-40" />
+    </div>
+  </div>
+);
+
+// Loading List Component for list views
+const LoadingList = ({ count = 3 }) => (
+  <div className="space-y-4">
+    {[...Array(count)].map((_, i) => (
+      <div key={i} className="bg-gray-900/50 border border-gray-800 rounded-xl p-4">
+        <div className="flex items-start justify-between mb-3">
+          <LoadingSkeleton className="h-5 w-48" />
+          <LoadingSkeleton className="h-5 w-16 rounded" />
+        </div>
+        <LoadingSkeleton className="h-4 w-full mb-2" />
+        <LoadingSkeleton className="h-4 w-3/4" />
+      </div>
+    ))}
   </div>
 );
 
@@ -655,45 +740,141 @@ const ArchitectureDiagram = ({ type }) => {
   return null;
 };
 
-// Flip Card Component
-const FlipCard = ({ front, back, className = "" }) => {
+// Flip Card Component - Enhanced with CSS class-based animations
+const FlipCard = ({ front, back, className = "", height = "auto" }) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
   return (
     <div
-      className={`flip-card relative ${className}`}
-      style={{ perspective: '1000px' }}
+      className={`flip-card relative ${isFlipped ? 'is-flipped' : ''} ${className}`}
+      style={{ height }}
       onMouseEnter={() => setIsFlipped(true)}
       onMouseLeave={() => setIsFlipped(false)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setIsFlipped(!isFlipped);
+        }
+      }}
+      aria-label="Flip card for more details"
     >
-      <div
-        className="flip-card-inner relative w-full h-full transition-transform duration-500"
-        style={{
-          transformStyle: 'preserve-3d',
-          transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)'
-        }}
-      >
-        {/* Front */}
-        <div
-          className="flip-card-front absolute w-full h-full backface-hidden"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
-          {front}
+      <div className="flip-card-inner">
+        <div className="flip-card-front">{front}</div>
+        <div className="flip-card-back">{back}</div>
+      </div>
+    </div>
+  );
+};
+
+// FlipMetricCard - Metric card with flip functionality showing framework details on back
+const FlipMetricCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
+  trendValue,
+  color = 'cyan',
+  frameworkMapping,
+  description,
+  sourceLink,
+  onClick
+}) => {
+  const colorClasses = {
+    cyan: 'from-cyan-500/20 to-cyan-900/10 border-cyan-500/30',
+    orange: 'from-orange-500/20 to-orange-900/10 border-orange-500/30',
+    red: 'from-red-500/20 to-red-900/10 border-red-500/30',
+    green: 'from-green-500/20 to-green-900/10 border-green-500/30',
+    purple: 'from-purple-500/20 to-purple-900/10 border-purple-500/30',
+    yellow: 'from-yellow-500/20 to-yellow-900/10 border-yellow-500/30'
+  };
+
+  const accentColors = {
+    cyan: 'text-cyan-400 border-cyan-500/30',
+    orange: 'text-orange-400 border-orange-500/30',
+    red: 'text-red-400 border-red-500/30',
+    green: 'text-green-400 border-green-500/30',
+    purple: 'text-purple-400 border-purple-500/30',
+    yellow: 'text-yellow-400 border-yellow-500/30'
+  };
+
+  const front = (
+    <div className={`h-full relative overflow-hidden rounded-xl bg-gradient-to-br ${colorClasses[color]} border backdrop-blur-sm p-5`}>
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-white/5 to-transparent rounded-full -translate-y-16 translate-x-16" />
+
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-gray-400 text-sm font-medium tracking-wide uppercase">{title}</p>
+          <p className="text-3xl font-bold text-white mt-1 font-mono">{value}</p>
+          {subtitle && <p className="text-gray-500 text-xs mt-1">{subtitle}</p>}
+        </div>
+        <div className="p-3 rounded-lg bg-black/30 border border-white/10">
+          <Icon className="w-6 h-6 text-gray-300" />
+        </div>
+      </div>
+
+      {trend && (
+        <div className="flex items-center mt-3 text-sm">
+          {trend === 'up' ? (
+            <TrendingUp className="w-4 h-4 text-green-400 mr-1" />
+          ) : trend === 'down' ? (
+            <TrendingDown className="w-4 h-4 text-red-400 mr-1" />
+          ) : (
+            <Activity className="w-4 h-4 text-gray-400 mr-1" />
+          )}
+          <span className={trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-gray-400'}>
+            {trendValue}
+          </span>
+        </div>
+      )}
+
+      <div className="absolute bottom-2 right-2 flex items-center text-xs text-gray-600">
+        <RefreshCw className="w-3 h-3 mr-1" />
+        <span>Hover for details</span>
+      </div>
+    </div>
+  );
+
+  const back = (
+    <div className={`h-full relative overflow-hidden rounded-xl bg-gradient-to-br ${colorClasses[color]} border backdrop-blur-sm p-4`}>
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-3">
+          <h4 className={`font-semibold ${accentColors[color].split(' ')[0]}`}>{title}</h4>
+          <Shield className={`w-4 h-4 ${accentColors[color].split(' ')[0]}`} />
         </div>
 
-        {/* Back */}
-        <div
-          className="flip-card-back absolute w-full h-full backface-hidden"
-          style={{
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)'
-          }}
-        >
-          {back}
+        {description && (
+          <p className="text-gray-400 text-xs mb-3 line-clamp-2">{description}</p>
+        )}
+
+        {frameworkMapping && (
+          <div className={`bg-black/30 rounded-lg p-2 border ${accentColors[color].split(' ')[1]} mb-3`}>
+            <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-1">Framework Mapping</p>
+            <p className={`text-xs ${accentColors[color].split(' ')[0]}`}>{frameworkMapping}</p>
+          </div>
+        )}
+
+        <div className="mt-auto">
+          {sourceLink && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onClick) onClick();
+              }}
+              className={`w-full flex items-center justify-center px-3 py-2 bg-black/40 border ${accentColors[color].split(' ')[1]} rounded-lg text-xs ${accentColors[color].split(' ')[0]} hover:bg-black/60 transition-colors`}
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              View Details
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
+
+  return <FlipCard front={front} back={back} height="160px" />;
 };
 
 // Drill-down Modal Component
@@ -1409,7 +1590,7 @@ export default function ARPRIDashboard() {
               <p className="text-gray-400">Industry-wide AI security metrics from authoritative sources (NIST NVD, CISA KEV, GitHub, OWASP)</p>
             </div>
 
-            {/* Top Metrics Row - Real Industry Data */}
+            {/* Top Metrics Row - Real Industry Data with FlipCards */}
             {industryLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <LoadingCard />
@@ -1424,7 +1605,7 @@ export default function ARPRIDashboard() {
               />
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <MetricCard
+                <FlipMetricCard
                   title="Critical CVEs"
                   value={industryData?.overview?.criticalCVEs || 0}
                   subtitle="Industry-wide (sample)"
@@ -1432,9 +1613,12 @@ export default function ARPRIDashboard() {
                   trend={industryData?.overview?.last30Days > 15 ? "up" : "down"}
                   trendValue={`${industryData?.overview?.last30Days || 0} in last 30 days`}
                   color="red"
+                  description={overviewMetricDetails['Critical CVEs']?.description}
+                  frameworkMapping={overviewMetricDetails['Critical CVEs']?.mapping}
+                  sourceLink={overviewMetricDetails['Critical CVEs']?.link}
                   onClick={() => setSelectedMetric('Critical CVEs')}
                 />
-                <MetricCard
+                <FlipMetricCard
                   title="Actively Exploited"
                   value={industryData?.overview?.activellyExploited || 0}
                   subtitle="CISA KEV Catalog"
@@ -1442,9 +1626,12 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue="Real-time from CISA"
                   color="orange"
+                  description={overviewMetricDetails['Actively Exploited']?.description}
+                  frameworkMapping={overviewMetricDetails['Actively Exploited']?.mapping}
+                  sourceLink={overviewMetricDetails['Actively Exploited']?.link}
                   onClick={() => setSelectedMetric('Actively Exploited')}
                 />
-                <MetricCard
+                <FlipMetricCard
                   title="Avg CVSS Score"
                   value={(industryData?.overview?.avgCVSS || 0).toFixed(1)}
                   subtitle="Industry baseline"
@@ -1452,9 +1639,12 @@ export default function ARPRIDashboard() {
                   trend="stable"
                   trendValue="NVD calculated"
                   color="yellow"
+                  description={overviewMetricDetails['Avg CVSS Score']?.description}
+                  frameworkMapping={overviewMetricDetails['Avg CVSS Score']?.mapping}
+                  sourceLink={overviewMetricDetails['Avg CVSS Score']?.link}
                   onClick={() => setSelectedMetric('Avg CVSS Score')}
                 />
-                <MetricCard
+                <FlipMetricCard
                   title="AI-Specific CVEs"
                   value={industryData?.aiSpecificRisks?.totalAICVEs || 0}
                   subtitle="AI/ML vulnerabilities"
@@ -1462,6 +1652,9 @@ export default function ARPRIDashboard() {
                   trend="up"
                   trendValue={`${industryData?.aiSpecificRisks?.aiDependencies || 0} dependencies`}
                   color="purple"
+                  description={overviewMetricDetails['AI-Specific CVEs']?.description}
+                  frameworkMapping={overviewMetricDetails['AI-Specific CVEs']?.mapping}
+                  sourceLink={overviewMetricDetails['AI-Specific CVEs']?.link}
                   onClick={() => setSelectedMetric('AI-Specific CVEs')}
                 />
               </div>
@@ -1807,9 +2000,10 @@ export default function ARPRIDashboard() {
                         <input
                           type="text"
                           value={threatSearchTerm}
-                          onChange={(e) => setThreatSearchTerm(e.target.value)}
+                          onChange={(e) => setThreatSearchTerm(sanitizeSearchInput(e.target.value))}
                           placeholder="Search threats..."
                           className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                          maxLength={200}
                         />
                       </div>
 
@@ -1854,8 +2048,17 @@ export default function ARPRIDashboard() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredThreats.length === 0 ? (
-                      <div className="col-span-full bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
-                        <p className="text-gray-400">No threats match your filters</p>
+                      <div className="col-span-full">
+                        <EmptyState
+                          icon={Shield}
+                          title="No threats match your filters"
+                          description="Try adjusting your search terms or severity filters to see more results"
+                          action={() => {
+                            setThreatSearchTerm('');
+                            setThreatSeverityFilter('all');
+                          }}
+                          actionLabel="Clear all filters"
+                        />
                       </div>
                     ) : (
                       filteredThreats.map((threat, index) => (
@@ -2074,9 +2277,10 @@ export default function ARPRIDashboard() {
                       <input
                         type="text"
                         value={frameworkSearchTerm}
-                        onChange={(e) => setFrameworkSearchTerm(e.target.value)}
+                        onChange={(e) => setFrameworkSearchTerm(sanitizeSearchInput(e.target.value))}
                         placeholder="Search frameworks..."
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                        maxLength={200}
                       />
                     </div>
 
@@ -2157,9 +2361,18 @@ export default function ARPRIDashboard() {
                 {/* Framework Cards */}
                 <div className="space-y-4">
                   {filteredFrameworks.length === 0 ? (
-                    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
-                      <p className="text-gray-400">No frameworks match your filters</p>
-                    </div>
+                    <EmptyState
+                      icon={FileText}
+                      title="No frameworks match your filters"
+                      description="Adjust your search, priority, or status filters to see compliance frameworks"
+                      action={() => {
+                        setFrameworkSearchTerm('');
+                        setFrameworkPriorityFilter('all');
+                        setFrameworkCategoryFilter('all');
+                        setFrameworkStatusFilter('all');
+                      }}
+                      actionLabel="Clear all filters"
+                    />
                   ) : (
                     filteredFrameworks.map((framework, index) => {
                     const priorityColors = {
@@ -2409,9 +2622,10 @@ export default function ARPRIDashboard() {
                       <input
                         type="text"
                         value={vulnSearchTerm}
-                        onChange={(e) => setVulnSearchTerm(e.target.value)}
+                        onChange={(e) => setVulnSearchTerm(sanitizeSearchInput(e.target.value))}
                         placeholder="Search by title, ID, or description..."
                         className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                        maxLength={200}
                       />
                     </div>
 
@@ -2487,9 +2701,18 @@ export default function ARPRIDashboard() {
                 {/* Vulnerability Cards */}
                 <div className="space-y-4">
                   {filteredVulnerabilities.length === 0 ? (
-                    <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-8 text-center">
-                      <p className="text-gray-400">No vulnerabilities match your filters</p>
-                    </div>
+                    <EmptyState
+                      icon={AlertTriangle}
+                      title="No vulnerabilities match your filters"
+                      description="Adjust your search, severity, or category filters to see AI/ML vulnerabilities"
+                      action={() => {
+                        setVulnSearchTerm('');
+                        setVulnSeverityFilter('all');
+                        setVulnCategoryFilter('all');
+                        setVulnExploitFilter('all');
+                      }}
+                      actionLabel="Clear all filters"
+                    />
                   ) : (
                     filteredVulnerabilities.map((vuln, index) => {
                     const severityColors = {
