@@ -150,37 +150,38 @@ class FeedAggregator {
   }
 
   // ============================================================================
-  // NIST NVD - National Vulnerability Database
+  // NIST NVD - National Vulnerability Database (via /api/realtime)
   // ============================================================================
   async getNVDData() {
     return this.getCachedOrFetch(
       'nvd',
       async () => {
+        // Use internal realtime endpoint to avoid CORS and leverage NVD_API_KEY
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 12000);
 
         try {
-          const response = await fetch(
-            'https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=artificial+intelligence&resultsPerPage=10',
-            {
-              headers: { 'User-Agent': 'ARPRI-Dashboard/1.0' },
-              signal: controller.signal
-            }
-          );
+          const response = await fetch(`${baseUrl}/api/realtime?type=nvd`, {
+            signal: controller.signal
+          });
 
           clearTimeout(timeout);
 
-          if (!response.ok) throw new Error(`NVD API error: ${response.status}`);
+          if (!response.ok) throw new Error(`Realtime NVD API error: ${response.status}`);
 
           const json = await response.json();
-          const cves = json.vulnerabilities || [];
+          const cves = json.aiCVEs || [];
 
-          return cves.slice(0, 10).map(vuln => ({
-            id: vuln.cve?.id || 'N/A',
-            description: (vuln.cve?.descriptions?.[0]?.value || 'No description').substring(0, 200),
-            severity: vuln.cve?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || 'MEDIUM',
-            score: vuln.cve?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore || 5.0,
-            published: vuln.cve?.published || new Date().toISOString(),
+          return cves.slice(0, 10).map(cve => ({
+            id: cve.id || 'N/A',
+            description: (cve.description || 'No description').substring(0, 200),
+            severity: cve.severity || 'MEDIUM',
+            score: cve.cvssScore || 5.0,
+            published: cve.published || new Date().toISOString(),
             source: 'NVD'
           }));
         } catch (error) {
@@ -193,38 +194,40 @@ class FeedAggregator {
   }
 
   // ============================================================================
-  // CISA KEV - Known Exploited Vulnerabilities
+  // CISA KEV - Known Exploited Vulnerabilities (via /api/realtime)
   // ============================================================================
   async getCISAAdvisories() {
     return this.getCachedOrFetch(
       'cisa',
       async () => {
+        // Use internal realtime endpoint to avoid CORS
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 10000);
+        const timeout = setTimeout(() => controller.abort(), 12000);
 
         try {
-          const response = await fetch(
-            'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-            {
-              signal: controller.signal
-            }
-          );
+          const response = await fetch(`${baseUrl}/api/realtime?type=cisa`, {
+            signal: controller.signal
+          });
 
           clearTimeout(timeout);
 
-          if (!response.ok) throw new Error(`CISA API error: ${response.status}`);
+          if (!response.ok) throw new Error(`Realtime CISA API error: ${response.status}`);
 
           const json = await response.json();
-          const vulnerabilities = json.vulnerabilities || [];
+          const vulnerabilities = json.recentEntries || [];
 
           return vulnerabilities.slice(0, 10).map(vuln => ({
-            cveID: vuln.cveID || 'N/A',
-            vendorProject: vuln.vendorProject || 'Unknown',
+            cveID: vuln.id || 'N/A',
+            vendorProject: vuln.vendor || 'Unknown',
             product: vuln.product || 'Unknown',
-            vulnerabilityName: vuln.vulnerabilityName || 'N/A',
+            vulnerabilityName: vuln.name || 'N/A',
             dateAdded: vuln.dateAdded || new Date().toISOString(),
-            shortDescription: (vuln.shortDescription || 'N/A').substring(0, 150),
-            requiredAction: (vuln.requiredAction || 'N/A').substring(0, 150),
+            shortDescription: vuln.requiredAction || 'N/A',
+            requiredAction: vuln.requiredAction || 'N/A',
             source: 'CISA KEV'
           }));
         } catch (error) {
@@ -286,58 +289,51 @@ class FeedAggregator {
   }
 
   // ============================================================================
-  // CVE Statistics - Industry Trends (Calculated from Real Data)
+  // CVE Statistics - Industry Trends (via /api/realtime)
   // ============================================================================
   async getCVEStatistics() {
     return this.getCachedOrFetch(
       'cve-stats',
       async () => {
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 15000);
 
         try {
-          // Fetch recent CVEs to calculate statistics
-          const response = await fetch(
-            'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=100',
-            {
-              headers: { 'User-Agent': 'ARPRI-Dashboard/1.0' },
-              signal: controller.signal
-            }
-          );
+          const response = await fetch(`${baseUrl}/api/realtime?type=nvd`, {
+            signal: controller.signal
+          });
 
           clearTimeout(timeout);
 
-          if (!response.ok) throw new Error(`NVD Stats API error: ${response.status}`);
+          if (!response.ok) throw new Error(`Realtime Stats API error: ${response.status}`);
 
           const json = await response.json();
-          const cves = json.vulnerabilities || [];
+          const cves = json.aiCVEs || [];
 
-          // Calculate statistics
+          // Calculate statistics from AI/ML CVEs
           const stats = {
-            total: cves.length,
+            total: json.totalAIResults || cves.length,
             bySeverity: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 },
-            recent30Days: 0,
+            recent30Days: json.criticalLast30Days || 0,
             withExploits: 0,
             avgCVSS: 0
           };
 
           let totalScore = 0;
-          const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-          cves.forEach(vuln => {
-            const severity = vuln.cve?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || 'UNKNOWN';
-            const score = vuln.cve?.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore || 0;
-            const published = new Date(vuln.cve?.published || 0);
+          cves.forEach(cve => {
+            const severity = cve.severity || 'UNKNOWN';
+            const score = cve.cvssScore || 0;
 
             stats.bySeverity[severity] = (stats.bySeverity[severity] || 0) + 1;
             totalScore += score;
-
-            if (published >= thirtyDaysAgo) {
-              stats.recent30Days++;
-            }
           });
 
-          stats.avgCVSS = (totalScore / cves.length).toFixed(1);
+          stats.avgCVSS = cves.length > 0 ? (totalScore / cves.length).toFixed(1) : 0;
 
           return {
             statistics: stats,
