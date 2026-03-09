@@ -1,172 +1,251 @@
 /**
- * Real-Time Data Integration API
- * Fetches live CVE data from public sources (NVD, CISA KEV)
+ * Real-Time Intelligence API
  *
- * Data Sources:
- * - NVD (National Vulnerability Database): https://nvd.nist.gov/developers/vulnerabilities
- * - CISA KEV Catalog: https://www.cisa.gov/known-exploited-vulnerabilities-catalog
- * - GitHub Security Advisories: https://github.com/advisories
+ * Free APIs (no cost, no card):
+ * - NVD CVE API v2  → https://nvd.nist.gov/developers/vulnerabilities
+ *   Optional free key (higher rate limit): https://nvd.nist.gov/developers/request-an-api-key
+ *   Set env: NVD_API_KEY=<your-key>
  *
- * Note: This is a foundation for real-time integration.
- * For production, implement proper API keys and rate limiting.
+ * - CISA KEV Catalog → https://www.cisa.gov/known-exploited-vulnerabilities-catalog
+ *   No auth required, updated daily.
+ *
+ * - OSV.dev → https://osv.dev
+ *   No auth required, covers PyPI/npm/GitHub packages.
+ *
+ * Paid / token-required:
+ * - Snyk API → https://docs.snyk.io/snyk-api
+ *   Set env: SNYK_API_TOKEN=<your-token>  (see api/snyk.js)
  */
 
-// Mock real-time data generator (will be replaced with actual API calls)
-function generateRealtimeData() {
-  const now = new Date();
+const NVD_BASE = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
+const CISA_KEV_URL = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+const OSV_QUERY_URL = 'https://api.osv.dev/v1/query';
+
+const AI_KEYWORDS = [
+  'pytorch', 'tensorflow', 'transformers', 'langchain', 'llm',
+  'machine learning', 'artificial intelligence', 'huggingface',
+  'openai', 'scikit-learn', 'keras', 'onnx', 'mlflow'
+];
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'ARPRI-Dashboard/3.0 (AI Risk Intelligence Platform)',
+        'Accept': 'application/json',
+        ...options.headers
+      }
+    });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    return await response.json();
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
+}
+
+/**
+ * Parse a single NVD CVE v2 entry into a flat object
+ * Schema: vulnerabilities[].cve.{id, descriptions, metrics.cvssMetricV31, published, references}
+ */
+function parseNVDCVE(entry) {
+  const cve = entry.cve;
+  const desc = (cve.descriptions || []).find(d => d.lang === 'en')?.value || '';
+  const cvssV31 = cve.metrics?.cvssMetricV31?.[0];
+  const cvssV30 = cve.metrics?.cvssMetricV30?.[0];
+  const cvss = cvssV31 || cvssV30;
 
   return {
-    timestamp: now.toISOString(),
-    source: 'ARPRI Real-Time Intelligence',
-
-    // NVD CVE Statistics
-    nvd: {
-      totalCVEs: 245738,
-      last24Hours: Math.floor(Math.random() * 50) + 20,
-      last7Days: Math.floor(Math.random() * 200) + 150,
-      last30Days: Math.floor(Math.random() * 800) + 600,
-      criticalCount: Math.floor(Math.random() * 30) + 10,
-      avgCVSS: (Math.random() * 2 + 6.5).toFixed(1), // 6.5-8.5
-
-      // AI/ML specific
-      aiRelated: {
-        total: Math.floor(Math.random() * 100) + 50,
-        pytorch: Math.floor(Math.random() * 15) + 5,
-        tensorflow: Math.floor(Math.random() * 20) + 8,
-        scikitLearn: Math.floor(Math.random() * 10) + 3,
-        huggingface: Math.floor(Math.random() * 8) + 2
-      }
-    },
-
-    // CISA KEV (Known Exploited Vulnerabilities)
-    cisa: {
-      totalKEV: Math.floor(Math.random() * 50) + 1100,
-      addedToday: Math.floor(Math.random() * 3),
-      addedThisWeek: Math.floor(Math.random() * 15) + 5,
-      criticalExploits: Math.floor(Math.random() * 20) + 40,
-      ransomwareUsed: Math.floor(Math.random() * 10) + 25,
-      aiMlRelated: Math.floor(Math.random() * 5) + 2
-    },
-
-    // OWASP LLM Top 10 Activity
-    owaspLLM: {
-      promptInjectionIncidents: Math.floor(Math.random() * 50) + 100,
-      trainingPoisoning: Math.floor(Math.random() * 20) + 15,
-      modelTheft: Math.floor(Math.random() * 30) + 25,
-      sensitiveDisclosure: Math.floor(Math.random() * 40) + 35,
-      pluginExploits: Math.floor(Math.random() * 15) + 10
-    },
-
-    // Trend indicators
-    trends: {
-      cveTrend: Math.random() > 0.5 ? 'increasing' : 'stable',
-      aiVulnTrend: 'increasing',
-      exploitTrend: Math.random() > 0.7 ? 'increasing' : 'stable',
-      severityTrend: Math.random() > 0.6 ? 'increasing' : 'decreasing'
-    },
-
-    // Top AI/ML CVEs (sample - will be replaced with real API data)
-    topAICVEs: [
-      {
-        id: 'CVE-2024-NEW-001',
-        title: 'PyTorch Model Deserialization RCE',
-        cvss: 9.8,
-        published: new Date(now - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        exploited: Math.random() > 0.7
-      },
-      {
-        id: 'CVE-2024-NEW-002',
-        title: 'TensorFlow GPU Memory Corruption',
-        cvss: 8.8,
-        published: new Date(now - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        exploited: false
-      },
-      {
-        id: 'CVE-2024-NEW-003',
-        title: 'LangChain Prompt Injection Bypass',
-        cvss: 9.1,
-        published: new Date(now - Math.random() * 21 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        exploited: true
-      }
-    ]
+    id: cve.id,
+    published: cve.published,
+    lastModified: cve.lastModified,
+    status: cve.vulnStatus,
+    description: desc,
+    cvssScore: cvss?.cvssData?.baseScore ?? null,
+    cvssVector: cvss?.cvssData?.vectorString ?? null,
+    severity: cvss?.cvssData?.baseSeverity ?? null,
+    exploitabilityScore: cvss?.exploitabilityScore ?? null,
+    impactScore: cvss?.impactScore ?? null,
+    weaknesses: (cve.weaknesses || []).flatMap(w =>
+      w.description.map(d => d.value)
+    ),
+    references: (cve.references || []).map(r => ({ url: r.url, tags: r.tags || [] }))
   };
 }
 
-// Integration endpoints (placeholders for actual API calls)
-const INTEGRATION_ENDPOINTS = {
-  NVD_API: 'https://services.nvd.nist.gov/rest/json/cves/2.0',
-  CISA_KEV: 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-  GITHUB_ADVISORIES: 'https://api.github.com/advisories',
-  MITRE_ATLAS: 'https://raw.githubusercontent.com/mitre-atlas/atlas-data/main/dist/stix/atlas.json'
-};
+/**
+ * Fetch recent AI/ML CVEs from NVD (last 30 days)
+ */
+async function fetchNVDAICVEs() {
+  const headers = {};
+  if (process.env.NVD_API_KEY) headers['apiKey'] = process.env.NVD_API_KEY;
 
-// Future: Actual NVD API integration
-async function fetchNVDData() {
-  // TODO: Implement actual NVD API call with rate limiting
-  // const response = await fetch(`${INTEGRATION_ENDPOINTS.NVD_API}?keywordSearch=artificial+intelligence&resultsPerPage=20`);
-  // return response.json();
+  const pubStartDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .toISOString().replace(/\.\d{3}Z$/, '.000');
+  const pubEndDate = new Date().toISOString().replace(/\.\d{3}Z$/, '.000');
 
-  return null; // Placeholder
+  // Two queries: general AI keywords + critical severity recent CVEs
+  const [aiData, criticalData] = await Promise.allSettled([
+    fetchWithTimeout(
+      `${NVD_BASE}?keywordSearch=machine+learning+AI&pubStartDate=${pubStartDate}&pubEndDate=${pubEndDate}&resultsPerPage=20&noRejected`,
+      { headers }
+    ),
+    fetchWithTimeout(
+      `${NVD_BASE}?cvssV3Severity=CRITICAL&pubStartDate=${pubStartDate}&pubEndDate=${pubEndDate}&resultsPerPage=1`,
+      { headers }
+    )
+  ]);
+
+  const aiVulns = aiData.status === 'fulfilled'
+    ? (aiData.value.vulnerabilities || []).map(parseNVDCVE)
+    : [];
+
+  return {
+    aiCVEs: aiVulns,
+    totalAIResults: aiData.status === 'fulfilled' ? aiData.value.totalResults : 0,
+    criticalLast30Days: criticalData.status === 'fulfilled' ? criticalData.value.totalResults : 0,
+    apiKeyConfigured: !!process.env.NVD_API_KEY,
+    errors: [
+      aiData.status === 'rejected' ? `AI query: ${aiData.reason?.message}` : null,
+      criticalData.status === 'rejected' ? `Critical query: ${criticalData.reason?.message}` : null
+    ].filter(Boolean)
+  };
 }
 
-// Future: Actual CISA KEV integration
+/**
+ * Fetch CISA Known Exploited Vulnerabilities catalog
+ */
 async function fetchCISAKEV() {
-  // TODO: Implement actual CISA KEV fetch
-  // const response = await fetch(INTEGRATION_ENDPOINTS.CISA_KEV);
-  // return response.json();
+  const data = await fetchWithTimeout(CISA_KEV_URL);
+  const vulns = data.vulnerabilities || [];
 
-  return null; // Placeholder
+  const aiRelated = vulns.filter(v => {
+    const text = `${v.vendorProject} ${v.product} ${v.vulnerabilityName} ${v.shortDescription}`.toLowerCase();
+    return AI_KEYWORDS.some(kw => text.includes(kw));
+  });
+
+  const now = Date.now();
+  const ms30d = 30 * 24 * 60 * 60 * 1000;
+  const ms7d = 7 * 24 * 60 * 60 * 1000;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  const recentlyAdded = vulns.filter(v => v.dateAdded && (now - new Date(v.dateAdded)) < ms30d);
+  const addedThisWeek = vulns.filter(v => v.dateAdded && (now - new Date(v.dateAdded)) < ms7d);
+  const addedToday = vulns.filter(v => v.dateAdded && new Date(v.dateAdded) >= today);
+
+  return {
+    total: vulns.length,
+    addedToday: addedToday.length,
+    addedThisWeek: addedThisWeek.length,
+    addedLast30Days: recentlyAdded.length,
+    ransomwareAssociated: vulns.filter(v => v.knownRansomwareCampaignUse === 'Known').length,
+    aiRelated: aiRelated.length,
+    recentEntries: recentlyAdded.slice(0, 5).map(v => ({
+      id: v.cveID,
+      name: v.vulnerabilityName,
+      vendor: v.vendorProject,
+      product: v.product,
+      dateAdded: v.dateAdded,
+      dueDate: v.dueDate,
+      ransomware: v.knownRansomwareCampaignUse === 'Known',
+      requiredAction: v.requiredAction
+    })),
+    catalogVersion: data.catalogVersion,
+    dateReleased: data.dateReleased
+  };
+}
+
+/**
+ * Fetch OSV.dev data for AI/ML Python packages
+ */
+async function fetchOSVData() {
+  const packages = [
+    { name: 'torch', ecosystem: 'PyPI' },
+    { name: 'tensorflow', ecosystem: 'PyPI' },
+    { name: 'transformers', ecosystem: 'PyPI' },
+    { name: 'langchain', ecosystem: 'PyPI' },
+    { name: 'openai', ecosystem: 'PyPI' }
+  ];
+
+  const results = await Promise.allSettled(
+    packages.map(pkg =>
+      fetchWithTimeout(OSV_QUERY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ package: pkg })
+      }, 8000)
+    )
+  );
+
+  const byPackage = {};
+  results.forEach((result, i) => {
+    byPackage[packages[i].name] = result.status === 'fulfilled'
+      ? (result.value.vulns || []).length
+      : null;
+  });
+
+  return {
+    byPackage,
+    totalKnownVulns: Object.values(byPackage).filter(v => v !== null).reduce((a, b) => a + b, 0)
+  };
 }
 
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
+  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  const { type } = req.query;
 
   try {
-    const { type } = req.query;
-
     switch (type) {
-      case 'nvd':
-        // Future: Return actual NVD data
-        const nvdData = await fetchNVDData();
-        return res.status(200).json(nvdData || { message: 'NVD integration pending' });
-
-      case 'cisa':
-        // Future: Return actual CISA KEV data
-        const cisaData = await fetchCISAKEV();
-        return res.status(200).json(cisaData || { message: 'CISA integration pending' });
-
-      case 'status':
-        // Return integration status
+      case 'nvd': {
+        const data = await fetchNVDAICVEs();
+        return res.status(200).json({ ...data, timestamp: new Date().toISOString(), source: 'NIST NVD CVE API v2' });
+      }
+      case 'cisa': {
+        const data = await fetchCISAKEV();
+        return res.status(200).json({ ...data, timestamp: new Date().toISOString(), source: 'CISA KEV Catalog' });
+      }
+      case 'osv': {
+        const data = await fetchOSVData();
+        return res.status(200).json({ ...data, timestamp: new Date().toISOString(), source: 'OSV.dev' });
+      }
+      case 'status': {
         return res.status(200).json({
           integrations: {
-            NVD: 'configured',
-            CISA: 'configured',
-            GitHub: 'pending',
-            MITRE: 'pending'
+            NVD: { status: 'active', freeApiKey: 'https://nvd.nist.gov/developers/request-an-api-key', apiKeyConfigured: !!process.env.NVD_API_KEY },
+            CISA_KEV: { status: 'active', authRequired: false },
+            OSV: { status: 'active', authRequired: false },
+            Snyk: { status: process.env.SNYK_API_TOKEN ? 'active' : 'token_missing', endpoint: '/api/snyk' }
           },
-          lastUpdate: new Date().toISOString(),
-          nextUpdate: new Date(Date.now() + 3600000).toISOString() // 1 hour from now
+          timestamp: new Date().toISOString()
         });
-
-      default:
-        // Return mock real-time data (will be replaced with actual integrations)
-        return res.status(200).json(generateRealtimeData());
+      }
+      default: {
+        const [nvd, cisa, osv] = await Promise.allSettled([
+          fetchNVDAICVEs(),
+          fetchCISAKEV(),
+          fetchOSVData()
+        ]);
+        return res.status(200).json({
+          timestamp: new Date().toISOString(),
+          nvd: nvd.status === 'fulfilled' ? nvd.value : { error: nvd.reason?.message },
+          cisa: cisa.status === 'fulfilled' ? cisa.value : { error: cisa.reason?.message },
+          osv: osv.status === 'fulfilled' ? osv.value : { error: osv.reason?.message }
+        });
+      }
     }
   } catch (error) {
-    console.error('Real-Time Data Integration API error:', error);
-    return res.status(500).json({ error: 'Internal server error', message: error.message });
+    console.error('Realtime API error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }

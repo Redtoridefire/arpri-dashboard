@@ -311,6 +311,29 @@ class APIClient {
   async getRealtimeStatus() {
     return this.fetch('/api/realtime?type=status');
   }
+
+  // ===================
+  // Snyk APIs
+  // ===================
+
+  async getSnykStatus() {
+    return this.fetch('/api/snyk?type=self');
+  }
+
+  async getSnykProjects(orgId) {
+    const q = orgId ? `&orgId=${orgId}` : '';
+    return this.fetch(`/api/snyk?type=projects${q}`);
+  }
+
+  async getSnykAIPackages(orgId) {
+    const q = orgId ? `&orgId=${orgId}` : '';
+    return this.fetch(`/api/snyk?type=ai-packages${q}`);
+  }
+
+  async getSnykPackage(purl, orgId) {
+    const q = orgId ? `&orgId=${orgId}` : '';
+    return this.fetch(`/api/snyk?type=package&purl=${encodeURIComponent(purl)}${q}`);
+  }
 }
 
 // Export singleton instance
