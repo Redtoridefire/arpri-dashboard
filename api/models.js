@@ -16,7 +16,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Input validation, Output filtering, Context separation',
     discovered: '2023-04-15',
-    references: ['OWASP-LLM01', 'CVE-2023-29374']
+    references: ['OWASP-LLM01', 'CVE-2023-29374'],
+    mitreAtlas: {
+      tactic: 'Initial Access',
+      technique: 'AML.T0051 - LLM Prompt Injection',
+      procedure: 'Craft malicious prompts to bypass safety guardrails and manipulate LLM behavior',
+      mitigations: [
+        'M0013 - Input/Output Filtering',
+        'M0042 - Prompt Hardening',
+        'M0047 - Context Isolation'
+      ],
+      detections: [
+        'Monitor for unusual prompt patterns and jailbreak attempts',
+        'Detect rapid successive prompt variations',
+        'Flag outputs that violate safety policies'
+      ]
+    }
   },
   {
     id: 'LLM02-2024',
@@ -29,7 +44,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Output sanitization, Content Security Policy, Encode outputs',
     discovered: '2023-05-20',
-    references: ['OWASP-LLM02', 'CVE-2023-36188']
+    references: ['OWASP-LLM02', 'CVE-2023-36188'],
+    mitreAtlas: {
+      tactic: 'Execution',
+      technique: 'AML.T0043 - Unsafe Consumption of LLM Output',
+      procedure: 'Inject malicious code in LLM responses that executes in downstream applications',
+      mitigations: [
+        'M0013 - Output Sanitization',
+        'M0048 - Content Security Policy',
+        'M0049 - Output Encoding'
+      ],
+      detections: [
+        'Scan LLM outputs for script tags and malicious patterns',
+        'Monitor downstream application for unexpected code execution',
+        'Log and analyze output validation failures'
+      ]
+    }
   },
   {
     id: 'LLM03-2024',
@@ -70,7 +100,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Rate limiting, Input size limits, Resource quotas',
     discovered: '2023-07-08',
-    references: ['OWASP-LLM04', 'CVE-2023-43654']
+    references: ['OWASP-LLM04', 'CVE-2023-43654'],
+    mitreAtlas: {
+      tactic: 'Impact',
+      technique: 'AML.T0029 - Denial of ML Service',
+      procedure: 'Send resource-intensive queries to exhaust compute resources and cause service degradation',
+      mitigations: [
+        'M0014 - Rate Limiting',
+        'M0045 - Input Size Constraints',
+        'M0046 - Resource Quotas and Throttling'
+      ],
+      detections: [
+        'Monitor API request patterns for abnormal volume',
+        'Track resource consumption per user/session',
+        'Alert on sudden spikes in inference latency'
+      ]
+    }
   },
   {
     id: 'LLM05-2024',
@@ -83,7 +128,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Verify signatures, SBOM tracking, Dependency scanning',
     discovered: '2023-08-14',
-    references: ['OWASP-LLM05', 'CVE-2023-38888']
+    references: ['OWASP-LLM05', 'CVE-2023-38888'],
+    mitreAtlas: {
+      tactic: 'ML Supply Chain Compromise',
+      technique: 'AML.T0010 - Backdoor ML Model',
+      procedure: 'Compromise model repositories or dependencies to inject malicious models or weights',
+      mitigations: [
+        'M0002 - Model Provenance Verification',
+        'M0003 - Software Bill of Materials (SBOM)',
+        'M0004 - Cryptographic Signature Validation'
+      ],
+      detections: [
+        'Validate model checksums and signatures',
+        'Monitor for unexpected model behavior after updates',
+        'Scan dependencies for known vulnerabilities'
+      ]
+    }
   },
   {
     id: 'LLM06-2024',
@@ -96,7 +156,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Data sanitization, Access controls, Differential privacy',
     discovered: '2023-09-22',
-    references: ['OWASP-LLM06', 'CVE-2023-45857']
+    references: ['OWASP-LLM06', 'CVE-2023-45857'],
+    mitreAtlas: {
+      tactic: 'Exfiltration',
+      technique: 'AML.T0024 - Infer Training Data Membership',
+      procedure: 'Extract sensitive information from model through targeted prompts or memorization exploits',
+      mitigations: [
+        'M0011 - Differential Privacy in Training',
+        'M0050 - Training Data Sanitization',
+        'M0051 - Access Control on Sensitive Features'
+      ],
+      detections: [
+        'Monitor for extraction-focused prompt patterns',
+        'Track information leakage in outputs',
+        'Alert on PII detection in model responses'
+      ]
+    }
   },
   {
     id: 'LLM07-2024',
@@ -109,7 +184,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Plugin sandboxing, Strict validation, Least privilege',
     discovered: '2023-10-05',
-    references: ['OWASP-LLM07', 'CVE-2023-48022']
+    references: ['OWASP-LLM07', 'CVE-2023-48022'],
+    mitreAtlas: {
+      tactic: 'Execution via Plugin',
+      technique: 'AML.T0052 - Exploit LLM Plugin Vulnerabilities',
+      procedure: 'Exploit insecure plugin interfaces to execute unauthorized actions through LLM',
+      mitigations: [
+        'M0038 - Plugin Sandboxing',
+        'M0039 - Least Privilege for Plugins',
+        'M0040 - Plugin Input Validation'
+      ],
+      detections: [
+        'Monitor plugin invocations for anomalous behavior',
+        'Log all plugin API calls and parameters',
+        'Alert on privilege escalation attempts'
+      ]
+    }
   },
   {
     id: 'LLM08-2024',
@@ -122,7 +212,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: false,
     patches: 'Human-in-the-loop, Permission scoping, Action logging',
     discovered: '2023-11-12',
-    references: ['OWASP-LLM08']
+    references: ['OWASP-LLM08'],
+    mitreAtlas: {
+      tactic: 'Impact',
+      technique: 'AML.T0034 - Excessive Model Autonomy',
+      procedure: 'LLM agents make unauthorized high-impact decisions without human oversight',
+      mitigations: [
+        'M0041 - Human-in-the-Loop Controls',
+        'M0039 - Least Privilege Access',
+        'M0043 - Action Logging and Audit'
+      ],
+      detections: [
+        'Monitor for high-risk actions without approval',
+        'Track decision confidence scores',
+        'Alert on critical actions outside policy bounds'
+      ]
+    }
   },
   {
     id: 'LLM09-2024',
@@ -135,7 +240,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: false,
     patches: 'Confidence scores, Source citations, Human review',
     discovered: '2024-01-08',
-    references: ['OWASP-LLM09']
+    references: ['OWASP-LLM09'],
+    mitreAtlas: {
+      tactic: 'Impact',
+      technique: 'AML.T0048 - Societal Harm via Model Misuse',
+      procedure: 'Users over-trust model outputs leading to incorrect decisions or misinformation spread',
+      mitigations: [
+        'M0044 - Confidence Score Display',
+        'M0045 - Source Attribution',
+        'M0041 - Mandatory Human Review'
+      ],
+      detections: [
+        'Track user acceptance rates without verification',
+        'Monitor for downstream decision failures',
+        'Alert on high-stakes use without review'
+      ]
+    }
   },
   {
     id: 'LLM10-2024',
@@ -148,7 +268,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'API authentication, Query limits, Model watermarking',
     discovered: '2024-02-14',
-    references: ['OWASP-LLM10', 'CVE-2024-21626']
+    references: ['OWASP-LLM10', 'CVE-2024-21626'],
+    mitreAtlas: {
+      tactic: 'Collection',
+      technique: 'AML.T0025 - Model Extraction via API',
+      procedure: 'Query model API systematically to reconstruct model weights or logic',
+      mitigations: [
+        'M0021 - Query Rate Limiting',
+        'M0052 - Model Watermarking',
+        'M0053 - API Access Control'
+      ],
+      detections: [
+        'Monitor for systematic query patterns',
+        'Track API calls per user/session',
+        'Alert on model probing behavior'
+      ]
+    }
   },
   {
     id: 'ADV-2024-001',
@@ -217,7 +352,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'DP-SGD training, Model compression, Regularization',
     discovered: '2024-04-02',
-    references: ['ArXiv-1610.05820']
+    references: ['ArXiv-1610.05820'],
+    mitreAtlas: {
+      tactic: 'Reconnaissance',
+      technique: 'AML.T0024 - Infer Training Data Membership',
+      procedure: 'Analyze model confidence scores to determine if specific records were in training data',
+      mitigations: [
+        'M0011 - Differential Privacy (DP-SGD)',
+        'M0054 - Model Regularization',
+        'M0013 - Output Perturbation'
+      ],
+      detections: [
+        'Monitor for repeated queries on similar inputs',
+        'Track confidence score distributions',
+        'Alert on privacy probing patterns'
+      ]
+    }
   },
   {
     id: 'CVE-2024-24576',
@@ -230,7 +380,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: true,
     patches: 'Upgrade to PyTorch 2.2.2+, Use safe loaders, Sandbox loading',
     discovered: '2024-04-10',
-    references: ['CVE-2024-24576', 'GHSA-gq5r-cc4w-g8xf']
+    references: ['CVE-2024-24576', 'GHSA-gq5r-cc4w-g8xf'],
+    mitreAtlas: {
+      tactic: 'Execution',
+      technique: 'AML.T0010 - Unsafe Model Deserialization',
+      procedure: 'Craft malicious pickle/checkpoint files that execute code when loaded by PyTorch',
+      mitigations: [
+        'M0055 - Safe Model Loading (torch.load with weights_only=True)',
+        'M0038 - Sandbox Model Loading',
+        'M0056 - Model File Integrity Checks'
+      ],
+      detections: [
+        'Scan model files for suspicious pickle operations',
+        'Monitor filesystem access during model loading',
+        'Alert on unexpected code execution from model directory'
+      ]
+    }
   },
   {
     id: 'CVE-2024-27322',
@@ -243,7 +408,22 @@ const AI_VULNERABILITIES = [
     exploitAvailable: false,
     patches: 'Upgrade to TensorFlow 2.16.1+, Validate tensor shapes',
     discovered: '2024-04-18',
-    references: ['CVE-2024-27322', 'TFSA-2024-001']
+    references: ['CVE-2024-27322', 'TFSA-2024-001'],
+    mitreAtlas: {
+      tactic: 'Execution',
+      technique: 'AML.T0057 - Exploit Framework Vulnerability',
+      procedure: 'Trigger integer overflow in TensorFlow GPU operations causing memory corruption',
+      mitigations: [
+        'M0057 - Framework Version Management',
+        'M0058 - Tensor Shape Validation',
+        'M0059 - Memory Safety Checks'
+      ],
+      detections: [
+        'Monitor for GPU memory errors',
+        'Track unusual tensor shape patterns',
+        'Alert on framework version vulnerabilities'
+      ]
+    }
   },
   {
     id: 'ATLAS-2024-001',

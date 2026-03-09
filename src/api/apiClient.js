@@ -286,6 +286,31 @@ class APIClient {
       throw error;
     }
   }
+
+  // ===================
+  // Real-Time Intelligence APIs
+  // ===================
+
+  /**
+   * Get real-time CVE/threat intelligence data
+   * Types: null (all), 'nvd', 'cisa', 'status'
+   */
+  async getRealtimeData(type = null) {
+    const query = type ? `?type=${type}` : '';
+    return this.fetch(`/api/realtime${query}`);
+  }
+
+  async getNVDRealtime() {
+    return this.fetch('/api/realtime?type=nvd');
+  }
+
+  async getCISARealtime() {
+    return this.fetch('/api/realtime?type=cisa');
+  }
+
+  async getRealtimeStatus() {
+    return this.fetch('/api/realtime?type=status');
+  }
 }
 
 // Export singleton instance

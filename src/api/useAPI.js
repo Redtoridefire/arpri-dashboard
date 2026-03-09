@@ -213,6 +213,18 @@ export function useModelTrends(modelName, days = 30) {
   );
 }
 
+/**
+ * Hook for real-time CVE/threat intelligence data
+ * Fetches live data from NVD, CISA KEV, and other public sources
+ */
+export function useRealtime(type = null) {
+  return useAPI(
+    () => apiClient.getRealtimeData(type),
+    [type],
+    { refreshInterval: 300000 } // Refresh every 5 minutes
+  );
+}
+
 export default {
   useAPI,
   useResilience,
@@ -225,5 +237,6 @@ export default {
   useIndustryMetrics,
   useDashboard,
   useFraudRealTime,
-  useModelTrends
+  useModelTrends,
+  useRealtime
 };
