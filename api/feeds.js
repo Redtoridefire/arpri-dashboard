@@ -150,90 +150,30 @@ class FeedAggregator {
   }
 
   // ============================================================================
-  // NIST NVD - National Vulnerability Database (via /api/realtime)
+  // NIST NVD - National Vulnerability Database (via shared client)
   // ============================================================================
   async getNVDData() {
     return this.getCachedOrFetch(
       'nvd',
       async () => {
-        // Use internal realtime endpoint to avoid CORS and leverage NVD_API_KEY
-        const baseUrl = process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000';
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
-
-        try {
-          const response = await fetch(`${baseUrl}/api/realtime?type=nvd`, {
-            signal: controller.signal
-          });
-
-          clearTimeout(timeout);
-
-          if (!response.ok) throw new Error(`Realtime NVD API error: ${response.status}`);
-
-          const json = await response.json();
-          const cves = json.aiCVEs || [];
-
-          return cves.slice(0, 10).map(cve => ({
-            id: cve.id || 'N/A',
-            description: (cve.description || 'No description').substring(0, 200),
-            severity: cve.severity || 'MEDIUM',
-            score: cve.cvssScore || 5.0,
-            published: cve.published || new Date().toISOString(),
-            source: 'NVD'
-          }));
-        } catch (error) {
-          clearTimeout(timeout);
-          throw error;
-        }
+        // Import dynamically to avoid issues
+        const { fetchNVDForFeed } = await import('./_lib/nvdClient.js');
+        return await fetchNVDForFeed();
       },
       () => this.generateFallbackCVEs()
     );
   }
 
   // ============================================================================
-  // CISA KEV - Known Exploited Vulnerabilities (via /api/realtime)
+  // CISA KEV - Known Exploited Vulnerabilities (via shared client)
   // ============================================================================
   async getCISAAdvisories() {
     return this.getCachedOrFetch(
       'cisa',
       async () => {
-        // Use internal realtime endpoint to avoid CORS
-        const baseUrl = process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000';
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 12000);
-
-        try {
-          const response = await fetch(`${baseUrl}/api/realtime?type=cisa`, {
-            signal: controller.signal
-          });
-
-          clearTimeout(timeout);
-
-          if (!response.ok) throw new Error(`Realtime CISA API error: ${response.status}`);
-
-          const json = await response.json();
-          const vulnerabilities = json.recentEntries || [];
-
-          return vulnerabilities.slice(0, 10).map(vuln => ({
-            cveID: vuln.id || 'N/A',
-            vendorProject: vuln.vendor || 'Unknown',
-            product: vuln.product || 'Unknown',
-            vulnerabilityName: vuln.name || 'N/A',
-            dateAdded: vuln.dateAdded || new Date().toISOString(),
-            shortDescription: vuln.requiredAction || 'N/A',
-            requiredAction: vuln.requiredAction || 'N/A',
-            source: 'CISA KEV'
-          }));
-        } catch (error) {
-          clearTimeout(timeout);
-          throw error;
-        }
+        // Import dynamically to avoid issues
+        const { fetchCISAForFeed } = await import('./_lib/cisaClient.js');
+        return await fetchCISAForFeed();
       },
       () => this.generateFallbackCISA()
     );
@@ -289,61 +229,43 @@ class FeedAggregator {
   }
 
   // ============================================================================
-  // CVE Statistics - Industry Trends (via /api/realtime)
+  // CVE Statistics - Industry Trends (via shared client)
   // ============================================================================
   async getCVEStatistics() {
     return this.getCachedOrFetch(
       'cve-stats',
       async () => {
-        const baseUrl = process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000';
+        // Import dynamically to avoid issues
+        const { fetchNVDAICVEs } = await import('./_lib/nvdClient.js');
+        const data = await fetchNVDAICVEs(90);
+        const cves = data.aiCVEs || [];
 
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
+        // Calculate statistics from AI/ML CVEs
+        const stats = {
+          total: data.totalAIResults || cves.length,
+          bySeverity: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 },
+          recent30Days: data.criticalLast30Days || 0,
+          withExploits: 0,
+          avgCVSS: 0
+        };
 
-        try {
-          const response = await fetch(`${baseUrl}/api/realtime?type=nvd`, {
-            signal: controller.signal
-          });
+        let totalScore = 0;
 
-          clearTimeout(timeout);
+        cves.forEach(cve => {
+          const severity = cve.severity || 'UNKNOWN';
+          const score = cve.cvssScore || 0;
 
-          if (!response.ok) throw new Error(`Realtime Stats API error: ${response.status}`);
+          stats.bySeverity[severity] = (stats.bySeverity[severity] || 0) + 1;
+          totalScore += score;
+        });
 
-          const json = await response.json();
-          const cves = json.aiCVEs || [];
+        stats.avgCVSS = cves.length > 0 ? (totalScore / cves.length).toFixed(1) : 0;
 
-          // Calculate statistics from AI/ML CVEs
-          const stats = {
-            total: json.totalAIResults || cves.length,
-            bySeverity: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 },
-            recent30Days: json.criticalLast30Days || 0,
-            withExploits: 0,
-            avgCVSS: 0
-          };
-
-          let totalScore = 0;
-
-          cves.forEach(cve => {
-            const severity = cve.severity || 'UNKNOWN';
-            const score = cve.cvssScore || 0;
-
-            stats.bySeverity[severity] = (stats.bySeverity[severity] || 0) + 1;
-            totalScore += score;
-          });
-
-          stats.avgCVSS = cves.length > 0 ? (totalScore / cves.length).toFixed(1) : 0;
-
-          return {
-            statistics: stats,
-            timestamp: new Date().toISOString(),
-            source: 'NVD'
-          };
-        } catch (error) {
-          clearTimeout(timeout);
-          throw error;
-        }
+        return {
+          statistics: stats,
+          timestamp: new Date().toISOString(),
+          source: 'NVD'
+        };
       },
       () => this.generateFallbackStats()
     );
