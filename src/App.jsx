@@ -747,7 +747,6 @@ const FlipCard = ({ front, back, className = "", height = "auto" }) => {
   return (
     <div
       className={`flip-card relative ${isFlipped ? 'is-flipped' : ''} ${className}`}
-      style={{ height }}
       onMouseEnter={() => setIsFlipped(true)}
       onMouseLeave={() => setIsFlipped(false)}
       role="button"
@@ -874,7 +873,7 @@ const FlipMetricCard = ({
     </div>
   );
 
-  return <FlipCard front={front} back={back} height="160px" />;
+  return <FlipCard front={front} back={back} />;
 };
 
 // Drill-down Modal Component
